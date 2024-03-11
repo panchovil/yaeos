@@ -41,8 +41,6 @@ contains
         call check(error, allclose([D1], [D1_val], absolute_tolerance))
         call check(error, allclose([dD1i], [dD1i_val], absolute_tolerance))
         call check(error, allclose([dD1ij], [dD1ij_val], absolute_tolerance))
-
-
     end subroutine test_QMR_RKPR
 
 end module test_cubic_mixrules
