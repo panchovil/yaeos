@@ -183,6 +183,32 @@ contains
       if (present(dPdN)) dPdN = dPdN_in
    end subroutine fugacity_vt
 
+   subroutine volume_newton(eos, n, P, T, V, root_type)
+      use yaeos__math_linalg, only: newton
+      class(ArModel), intent(in) :: eos
+      real(pr), intent(in) :: n(:)
+      real(pr), intent(in) :: P, T
+      real(pr), intent(out) :: V
+      character(len=*), intent(in) :: root_type
+
+      real(pr) :: v0
+
+      select case(root_type)
+      case("liquid")
+         v = 0.1
+      case("vapor")
+         v = R * T / P
+      end select
+      call newton(foo, v, tol=1e-8_pr, max_iters=100)
+   contains
+      subroutine foo(x, f, df)
+         real(pr), intent(in) :: x
+         real(pr), intent(out) :: f, df
+         call pressure(eos, n, x, t, p=f, dpdv=df)
+         f = f - p
+      end subroutine
+   end subroutine
+
    subroutine volume(eos, n, P, T, V, root_type, max_iters)
       !! Volume solver at a given pressure.
       !!

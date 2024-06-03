@@ -1,5 +1,5 @@
 program main
-    use yaeos, only: pr, ArModel, PengRobinson76, volume
+    use yaeos, only: pr, ArModel, PengRobinson76, volume, volume_newton
     implicit none
     class(ArModel), allocatable :: eos
 
@@ -10,7 +10,7 @@ program main
     real(pr) :: v
     real(pr) :: p0, pf, dp, p
     real(pr) :: t0, tf, dt, t
-    integer :: i, j, n_p_points=500, n_t_points=5
+    integer :: i, j, n_p_points=5000, n_t_points=1
 
     n = [0.3_pr, 0.7_pr]
     tc = [190._pr, 310._pr]
@@ -34,7 +34,7 @@ program main
         print *, "# ", t
         do i=0,n_p_points-1
             p = p0 + dp * i
-            call volume(eos, n, p, t, v, root_type="stable")
+            call volume_newton(eos, n, p, t, v, root_type="liquid")
             print *, v, p
         end do
         print *, ""
