@@ -104,6 +104,8 @@ contains
         print *, "Compiler: ", compiler_version()
         print *, "Compiler options: ", compiler_options()
 
+        print *, "--------------------------------------------------------------"
+        print *, "Helmholtz Function valuation"
         call run_bench(n, allderivs, fug_p, "Analytic PR76")
         ! call run_bench(n, allderivs, fug_p, "Tape PR76")
         ! call run_bench(n, allderivs, fug_p, "Adiff PR76")
@@ -112,6 +114,35 @@ contains
         call run_bench(n, allderivs, fug_p, "Analytic PR76")
         ! call run_bench(n, allderivs, fug_p, "Tape PR76")
         ! call run_bench(n, allderivs, fug_p, "Adiff PR76")
+
+        print *, "--------------------------------------------------------------"
+        print *, "Flashes"
+        flash: block
+        use yaeos, only: pr, CubicEoS, PengRobinson76, EquilibriumState, flash
+        real(pr) :: tc(2), pc(2), w(2), n(2), T, P
+        type(CubicEoS) :: model
+        type(EquilibriumState) :: flash_result
+        integer :: iter
+
+        ! Methane/ Butane mixture
+        n = [0.4, 0.6]                      ! Composition
+        tc = [190.564, 425.12]              ! Critical temperatures
+        pc = [45.99, 37.96]                 ! Critical pressures
+        w = [0.0115478, 0.200164]           ! Acentric factors
+
+        ! Use the PengRobinson76 model
+        model = PengRobinson76(tc, pc, w)
+
+        ! Set pressure and temperatures
+        P = 60
+        T = 294
+
+        ! Calculate flashes
+        flash_result = flash(model, n, t=t, p_spec=p, iters=iter)
+
+        end block flash
+
+
         print *, "============================================================="
     end subroutine
 
