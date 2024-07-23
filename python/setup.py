@@ -2,7 +2,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from setuptools import Command, setup
+from setuptools import Command, Extension, setup
 from setuptools.command.editable_wheel import editable_wheel
 from setuptools.command.egg_info import egg_info
 
@@ -18,6 +18,9 @@ COMPILED_FLAG = THIS_DIR / "compiled_flag"
 
 FFLAGS = "-g -fPIC -funroll-loops -fstack-arrays -Ofast -frepack-arrays -faggressive-function-elimination -fopenmp"  # noqa
 CFLAGS = "-fPIC"
+
+
+yaeos_extension = Extension('dummy', sources=[])
 
 
 # =============================================================================
@@ -227,6 +230,7 @@ setup(
         "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
     ],
     install_requires=["numpy"],
+    ext_modules=[yaeos_extension],
     cmdclass={
         "build_fortran": BuildFortran,
         "editable_wheel": CustomEditable,

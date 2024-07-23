@@ -12,3 +12,10 @@ target-version = ["py310"]
 markers = [
     "marker_name: marker_description",
 ]
+
+
+[tool.cibuildwheel]
+build = ["cp310-*", "cp311-*", "cp312-*"]
+
+[tool.cibuildwheel.linux]
+before-all = "bash python/wheel_pre_confs/manylinux.sh"

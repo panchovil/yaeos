@@ -23,6 +23,7 @@ fpm.rsp
 tools/notebooks/sympy-differentiation.ipynb
 tools/notebooks/unifac.ipynb
 __pycache__
+wheelhouse
 tools/notebooks/database/molarmass.csv
 tools/notebooks/database/ogUNIFAC/ogUNIFAC_groups.csv
 app/plot
