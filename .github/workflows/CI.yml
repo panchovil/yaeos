@@ -17,7 +17,7 @@ jobs:
           - {compiler: gcc, version: 13}
           - {compiler: intel, version: '2024.1'}
           - {compiler: intel, version: '2023.2'}
-          - {compiler: intel, version: '2023.2'}
+          - {compiler: nvidia-hpc, version: '23.11'}
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
