@@ -92,9 +92,17 @@ contains
     end subroutine
     
     subroutine main()
+        use iso_fortran_env, only: compiler_version, compiler_options
         integer :: n=20
         logical :: allderivs=.false.
         logical :: fug_p = .false.
+
+        print *, "============================================================="
+        print *, "BENCHMARKING YAEOS"
+        print *, "-------------------------------------------------------------"
+
+        print *, "Compiler: ", compiler_version()
+        print *, "Compiler options: ", compiler_options()
 
         call run_bench(n, allderivs, fug_p, "Analytic PR76")
         ! call run_bench(n, allderivs, fug_p, "Tape PR76")
@@ -104,6 +112,7 @@ contains
         call run_bench(n, allderivs, fug_p, "Analytic PR76")
         ! call run_bench(n, allderivs, fug_p, "Tape PR76")
         ! call run_bench(n, allderivs, fug_p, "Adiff PR76")
+        print *, "============================================================="
     end subroutine
 
 end module

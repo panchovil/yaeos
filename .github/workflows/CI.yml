@@ -10,12 +10,13 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         python-version: [3.9]
-        toolchain:
+        compilers:
           - {compiler: gcc, version: 10}
           - {compiler: gcc, version: 11}
           - {compiler: gcc, version: 12}
           - {compiler: gcc, version: 13}
           - {compiler: intel, version: '2024.1'}
+          - {compiler: intel, version: '2023.2'}
           - {compiler: intel, version: '2023.2'}
     steps:
     - name: Checkout code
@@ -27,8 +28,8 @@ jobs:
       uses: fortran-lang/setup-fortran@v1
       id: setup-fortran
       with:
-        compiler: ${{ matrix.toolchain.compiler }}
-        version: ${{ matrix.toolchain.version }}
+        compiler: ${{ matrix.compilers.compiler }}
+        version: ${{ matrix.compilers.version }}
 
     - name: Install Python
       uses: actions/setup-python@v1 # Use pip to install latest CMake, & FORD/Jin2For, etc.
@@ -60,6 +61,9 @@ jobs:
       run: |
         fpm test --profile debug --flag -coverage --compiler ${{ env.FC }} --c-compiler gcc
         bash ci/ci.sh
+
+    - name: Run benchmark
+      run: fpm run --example demo --profile release -- bench --compiler ${{ env.FC }}
 
     - name: Coverage
       run: bash ci/ci.sh coverage
