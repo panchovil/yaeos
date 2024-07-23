@@ -1,8 +1,18 @@
 program examples
-    ! use bench, only: benchmarks => main
+    use bench, only: benchmarks => main
     use hyperdual_pr76, only: run_hyperdual_pr76 => main
     use flashing, only: run_flashes => main
     use tape_nrtl, only: run_tape_nrtl => main
+
+    character(len=250) :: arg
+
+    call get_command_argument(1, arg)
+
+    select case(arg)
+    case ("bench")
+        call benchmarks
+        call exit
+    end select
 
     print *, "========================================="
     print *, "YAEOS DEMO"
