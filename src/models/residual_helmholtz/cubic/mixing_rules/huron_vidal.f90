@@ -139,9 +139,9 @@ contains
       class(MHV), intent(in) :: self
       real(pr), intent(in) :: n(:)
       real(pr), intent(in) :: bi(:)
-      real(pr), intent(out) :: B, dBi(:), dBij(:, :)
+      real(pr), intent(out) :: B
+      real(pr), optional, intent(out) ::  dBi(:), dBij(:, :)
       call bmix_qmr(n, bi, self%l, b, dbi, dbij)
-      ! call bmix_linear(n, bi, b, dbi, dbij)
    end subroutine
 
    subroutine DmixMHV(self, n, T, &
@@ -173,7 +173,8 @@ contains
       class(MHV), intent(in) :: self
       real(pr), intent(in) :: T, n(:)
       real(pr), intent(in) :: ai(:), daidt(:), daidt2(:)
-      real(pr), intent(out) :: D, dDdT, dDdT2, dDi(:), dDidT(:), dDij(:, :)
+      real(pr), intent(out) :: D, dDdT, dDdT2
+      real(pr), optional :: dDi(:), dDidT(:), dDij(:, :)
       real(pr) :: f, fdt, fdt2, fdi(size(n)), fdit(size(n)), fdij(size(n), size(n))
 
       real(pr) :: b, bi(size(n)), dbi(size(n)), dbij(size(n), size(n))
@@ -188,15 +189,27 @@ contains
       integer :: i, j, l, nc
       real(pr) :: q
 
+      logical :: dn, dn2
+
       nc = size(n)
       totn = sum(n)
 
       q = self%q
       bi = self%bi
 
-      call self%ge%excess_gibbs( &
-         n, T, Ge=Ge, GeT=GeT, GeT2=GeT2, Gen=Gen, GeTn=GeTn, Gen2=Gen2 &
+      dn = present(dDi) .or. present(dDidT) .and. .not. present(dDij)
+      dn2 = present(dDij)
+
+
+      if (present(dn)) then
+         call self%ge%excess_gibbs( &
+            n, T, Ge=Ge, GeT=GeT, GeT2=GeT2, Gen=Gen, GeTn=GeTn &
          )
+      else if (present(dn2))
+         call self%ge%excess_gibbs( &
+            n, T, Ge=Ge, GeT=GeT, GeT2=GeT2, Gen=Gen, GeTn=GeTn, Gen2=Gen2 &
+         )
+      end if
       call self%Bmix(n, bi, B, dBi, dBij)
       logb_nbi = log(B/(totn*bi))
       dot_n_logB_nbi = dot_product(n, logB_nbi)

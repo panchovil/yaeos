@@ -1,105 +1,115 @@
 module yaeos__models_ar_cubic_mixing_base
-    !! # Mixing rules core math
-    !! Procedures of the core calculations of CubicEoS mixing rules.
-    !!
-    !! # Description
-    !! This module holds all the basic math to use mixing rules in other codes.
-    !! Keeping it simple and accesible.
-    !!
-    !! # Examples
-    !!
-    !! ```fortran
-    !! bi = [0.2, 0.3]
-    !! lij = reshape([0.0, 0.2, 0.2, 0], [2,2])
-    !!
-    !! ! Calculate B parameter with Quadratric Mixing Rules.
-    !! call bmix_qmr(n, bi, lij, b, dbi, dbij)
-    !! 
-    !! ```
-    !!
-    !! # References
-    use yaeos__constants, only: pr
-    implicit none
+   !! # Mixing rules core math
+   !! Procedures of the core calculations of CubicEoS mixing rules.
+   !!
+   !! # Description
+   !! This module holds all the basic math to use mixing rules in other codes.
+   !! Keeping it simple and accesible.
+   !!
+   !! # Examples
+   !!
+   !! ```fortran
+   !! bi = [0.2, 0.3]
+   !! lij = reshape([0.0, 0.2, 0.2, 0], [2,2])
+   !!
+   !! ! Calculate B parameter with Quadratric Mixing Rules.
+   !! call bmix_qmr(n, bi, lij, b, dbi, dbij)
+   !!
+   !! ```
+   !!
+   !! # References
+   use yaeos__constants, only: pr
+   implicit none
 contains
 
-    pure subroutine bmix_linear(n, bi, b, dbi, dbij)
-        real(pr), intent(in) :: n(:)
-        real(pr), intent(in) :: bi(:)
-        real(pr), intent(out) :: b, dbi(:), dbij(:, :)
+   pure subroutine bmix_linear(n, bi, b, dbi, dbij)
+      real(pr), intent(in) :: n(:)
+      real(pr), intent(in) :: bi(:)
+      real(pr), intent(out) :: b
+      real(pr), optional :: dbi(:), dbij(:, :)
 
-        b = sum(n*bi)
-        dbi = bi
-        dbij = 0
-    end subroutine
+      b = sum(n*bi)
+      if (present(dbi)) dbi = bi
+      if (present(dbij)) dbij = 0
+   end subroutine bmix_linear
 
-    pure subroutine bmix_qmr(n, bi, lij, b, dbi, dbij)
-        real(pr), intent(in) :: n(:)
-        real(pr), intent(in) :: bi(:)
-        real(pr), intent(in) :: lij(:, :)
-        real(pr), intent(out) :: b, dbi(:), dbij(:, :)
-        
-        real(pr) :: bij(size(n), size(n))
+   pure subroutine bmix_qmr(n, bi, lij, b, dbi, dbij)
+      real(pr), intent(in) :: n(:)
+      real(pr), intent(in) :: bi(:)
+      real(pr), intent(in) :: lij(:, :)
+      real(pr), intent(out) :: b
+      real(pr), optional, intent(out) ::  dbi(:), dbij(:, :)
 
-        real(pr) :: totn, aux(size(n))
+      real(pr) :: bij(size(n), size(n))
 
-        integer :: i, j, nc
+      real(pr) :: totn, aux(size(n))
 
-        nc = size(n)
-        TOTN = sum(n)
-        B = 0
-        dBi = 0
-        dBij = 0
-        aux = 0
+      integer :: i, j, nc
 
-        do i = 1, nc
-            do j = 1, nc
-                bij(i, j) = 0.5_pr * (bi(i) + bi(j)) * (1.0_pr - lij(i,j))
-                aux(i) = aux(i) + n(j) * bij(i, j)
-            end do
-            B = B + n(i)*aux(i)
-        end do
+      nc = size(n)
+      TOTN = sum(n)
+      B = 0
+      dBi = 0
+      dBij = 0
+      aux = 0
 
-        B = B/totn
+      do i = 1, nc
+         do j = 1, nc
+            bij(i, j) = 0.5_pr * (bi(i) + bi(j)) * (1.0_pr - lij(i,j))
+            aux(i) = aux(i) + n(j) * bij(i, j)
+         end do
+         B = B + n(i)*aux(i)
+      end do
 
-        do i = 1, nc
-            dBi(i) = (2*aux(i) - B)/totn
-            do j = 1, i
-                dBij(i, j) = (2*bij(i, j) - dBi(i) - dBi(j))/totn
-                dBij(j, i) = dBij(i, j)
-            end do
-        end do
-    end subroutine
+      B = B/totn
 
-    pure subroutine d1mix_rkpr(n, d1i, d1, dd1i, dd1ij)
-        !! RKPR \(\delta_1\) parameter mixing rule.
-        !!
-        !! The RKPR EoS doesn't have a constant \(\delta_1\) value for each 
-        !! component, so a proper mixing rule should be provided. A linear
-        !! combination is used.
-        !!
-        !! \[
-        !!     \Delta_1 = \sum_i^N n_i \delta_{1i}
-        !! \]
-        !!
-        real(pr), intent(in) :: n(:)
-        real(pr), intent(in) :: d1i(:)
-        real(pr), intent(out) :: D1
-        real(pr), intent(out) :: dD1i(:)
-        real(pr), intent(out) :: dD1ij(:, :)
+      if (present(dbi)) then
+         do i = 1, nc
+            if (present(dbij)) then
+               dBi(i) = (2*aux(i) - B)/totn
+               do j = 1, i
+                  dBij(i, j) = (2*bij(i, j) - dBi(i) - dBi(j))/totn
+                  dBij(j, i) = dBij(i, j)
+               end do
+            end if
+         end do
+      end if
+   end subroutine bmix_qmr
 
-        integer :: i, j, nc
-        real(pr) :: totn
+   pure subroutine d1mix_rkpr(n, d1i, d1, dd1i, dd1ij)
+      !! RKPR \(\delta_1\) parameter mixing rule.
+      !!
+      !! The RKPR EoS doesn't have a constant \(\delta_1\) value for each
+      !! component, so a proper mixing rule should be provided. A linear
+      !! combination is used.
+      !!
+      !! \[
+      !!     \Delta_1 = \sum_i^N n_i \delta_{1i}
+      !! \]
+      !!
+      real(pr), intent(in) :: n(:)
+      real(pr), intent(in) :: d1i(:)
+      real(pr), intent(out) :: D1
+      real(pr), optional, intent(out) :: dD1i(:)
+      real(pr), optional, intent(out) :: dD1ij(:, :)
 
-        nc = size(n)
-        totn = sum(n)
+      integer :: i, j, nc
+      real(pr) :: totn
 
-        D1 = sum(n * d1i)/totn
+      nc = size(n)
+      totn = sum(n)
 
-        do i = 1, nc
+      D1 = sum(n * d1i)/totn
+
+      if (present(dD1i)) then
+         do i = 1, nc
             dD1i(i) = (d1i(i) - D1)/totn
-            do j = 1, nc
-                dD1ij(i, j) = (2 * D1 - d1i(i) - d1i(j))/totn**2
-            end do
-        end do
-    end subroutine
-end module
+            if (present(dD1ij)) then
+               do j = 1, nc
+                  dD1ij(i, j) = (2 * D1 - d1i(i) - d1i(j))/totn**2
+               end do
+            end if
+         end do
+      end if
+   end subroutine d1mix_rkpr
+end module yaeos__models_ar_cubic_mixing_base
