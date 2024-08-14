@@ -10,7 +10,7 @@ program phase_diagram
    ! ===========================================================================
    ! Variables definition
    ! ---------------------------------------------------------------------------
-   integer, parameter :: nc=2            
+   integer, parameter :: nc=2  
    class(ArModel), allocatable :: model ! Thermodynamic model to be used
    type(EquilibriumState) :: sat_point   ! Init
    type(PTEnvel2) :: envelope           ! PT Phase envelope
@@ -41,8 +41,12 @@ program phase_diagram
    ! Calculate phase envelope
    envelope = pt_envelope_2ph(model, n, sat_point)
 
-   ! Write the phase envelope to screen
-   write(*, *) envelope
+
+   write(1, "(*(A,2x))") "kind","T", "P", "beta","x", "y", "Vx", "Vy"
+   write(*, *) envelope%points(100)
+   write(1,*) envelope
+   
+   
 
 contains
 
