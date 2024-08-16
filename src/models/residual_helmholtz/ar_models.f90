@@ -250,8 +250,8 @@ contains
    end subroutine pressure
 
    subroutine fugacity_pt(eos, &
-      n, P, T, V, root_type, lnPhi, dlnPhidP, dlnPhidT, dlnPhidn, dPdV, dPdT, dPdn &
-      )
+      n, P, T, V, root_type, lnPhi, dlnPhidP, dlnPhidT, dlnPhidn, dPdV, dPdT, dPdn, &
+      lnFug, dVdT, dVdn)
       !! Calculate logarithm of fugacity, given pressure and temperature.
       !!
       !! This routine will obtain the desired volume root at the specified
@@ -271,6 +271,9 @@ contains
       real(pr), optional, intent(out) :: dPdV !! \(\frac{dP}{dV}\)
       real(pr), optional, intent(out) :: dPdT !! \(\frac{dP}{dT}\)
       real(pr), optional, intent(out) :: dPdn(size(n)) !! \(\frac{dP}{dn_i}\)
+      real(pr), optional, intent(out) :: lnFug(size(n)) !! \(\ln(phi*P)\) vector
+      real(pr), optional, intent(out) :: dVdT !! \(\frac{dV}{dT}\)
+      real(pr), optional, intent(out) :: dVdn(size(n)) !! \(\frac{dV}{dn_i}\)
 
       real(pr) :: V_in, P_in
 
@@ -279,8 +282,8 @@ contains
          n, V=V_in, T=T, &
          P=P_in, lnPhi=lnPhi, &
          dlnPhidP=dlnPhidP, dlnPhidT=dlnPhidT, dlnPhidn=dlnPhidn, &
-         dPdV=dPdV, dPdT=dPdT, dPdn=dPdn &
-         )
+         dPdV=dPdV, dPdT=dPdT, dPdn=dPdn, lnFug=lnFug, dVdT=dVdT, &
+         dVdn=dVdn)
 
       if(present(V)) V = V_in
 
@@ -291,8 +294,8 @@ contains
    end subroutine fugacity_pt
 
    subroutine fugacity_vt(eos, &
-      n, V, T, P, lnPhi, dlnPhidP, dlnPhidT, dlnPhidn, dPdV, dPdT, dPdn &
-      )
+      n, V, T, P, lnPhi, dlnPhidP, dlnPhidT, dlnPhidn, dPdV, dPdT, dPdn, &
+      lnFug, dVdT, dVdn)
       !! Calculate fugacity coefficent given volume and temperature.
       !!
       !!@note
@@ -314,13 +317,16 @@ contains
       real(pr), optional, intent(out) :: dPdV !! \(\frac{dP}{dV}\)
       real(pr), optional, intent(out) :: dPdT !! \(\frac{dP}{dT}\)
       real(pr), optional, intent(out) :: dPdn(:) !! \(\frac{dP}{dn_i}\)
+      real(pr), optional, intent(out) :: lnFug(size(n)) !! \(\ln(phi*P)\) vector
+      real(pr), optional, intent(out) :: dVdT !! \(\frac{dV}{dT}\)
+      real(pr), optional, intent(out) :: dVdn(size(n)) !! \(\frac{dV}{dn_i}\)
 
       real(pr) :: Ar, ArTV, ArV, ArV2
       real(pr), dimension(size(n)) :: Arn, ArVn, ArTn
       real(pr) :: Arn2(size(n), size(n))
 
       real(pr) :: dPdV_in, dPdT_in, dPdn_in(size(n))
-      real(pr) :: P_in
+      real(pr) :: P_in, lnFug_in(size(n)), dVdT_in, dVdn_in(size(n))
 
       real(pr) :: RT, Z
 
@@ -384,6 +390,15 @@ contains
       if (present(dPdV)) dPdV = dPdV_in
       if (present(dPdT)) dPdT = dPdT_in
       if (present(dPdn)) dPdn = dPdn_in
+      
+      ! Capillary Pressure
+      lnFug_in = Arn(:)/RT - log(Z/P_in)
+      dVdT_in = -dPdT_in/dPdV_in
+      dVdn_in = -dPdn_in/dPdV_in
+      if (present(lnFug)) lnFug = lnFug_in
+      if (present(dVdT)) dVdT = dVdT_in
+      if (present(dVdn)) dVdn = dVdn_in 
+
    end subroutine fugacity_vt
 
    subroutine enthalpy_residual_vt(eos, n, V, T, Hr, HrT, HrV, Hrn)
