@@ -21,7 +21,7 @@ module yaeos__equilibria_boundaries_nano_phase_envelopes_pt
        type(NanoCriticalPoint), allocatable :: cps(:)
        !! Critical points found along the line.
     contains
-       procedure, pass :: write =>  nano_pt_envelope_2ph
+       procedure, pass :: write =>  write_NanoPTEnvel2
        generic, public :: write (FORMATTED) => write
     end type NanoPTEnvel2
  
@@ -126,14 +126,15 @@ contains
         subroutine Laplace(y_in, IFT_out, Pcap_out)
             !real(pr), intent(in) :: r_poro_in, ang_cont_in, Par_in(:)
             !real(pr), intent(in) :: Vx_in, Vy_in, y_in(:)
-            real, intent(in) :: y_in(:)
+            real(pr), intent(in) :: y_in(:)
             real(pr), intent(out) :: IFT_out, Pcap_out
             integer :: i
             !Par [cm^3/mol * (mN/m)^1/4], r_poro [m], ang_cont [rad]
             !IFT [(mN/m)^1/4]
-            do i=1,nc
-                IFT_out=IFT_out+((Par(i)/1000.0)*(z(i)/Vx-y_in(i)/Vy))
-            end do
+            !do i=1,nc
+            !    IFT_out=IFT_out+((Par(i)/1000.0)*(z(i)/Vz-y_in(i)/Vy))
+            !end do
+            IFT_out = sum((Par/1000.0)*(z/Vz-y_in/Vy))
             !Pcap [bar]
             Pcap_out = (0.00000001*2.0*(IFT_out**4)*cos(ang_cont))/r_poro !E=4
         end subroutine Laplace
@@ -190,31 +191,40 @@ contains
             end select   
 
             call model%lnphi_pt(&
-                z, P=Pz, T, V=Vz, root_type=kind_z, &
+                z, Pz, T, V=Vz, root_type=kind_z, &
                 lnFug=lnFug_z, dlnPhidt=dlnphi_dt_z, &
                 dlnPhidp=dlnphi_dp_z, dlnphidn=dlnphi_dn_z, &
                 dPdV=dPdV_z, dVdT=dVdT_z)
             call model%lnphi_pt(&
-                y, P=Py, T, V=Vy, root_type=kind_y, &
+                y, Py, T, V=Vy, root_type=kind_y, &
                 lnFug=lnFug_y, dlnPhidt=dlnphi_dt_y, &
                 dlnPhidp=dlnphi_dp_y, dlnphidn=dlnphi_dn_y, &
                 dPdV=dPdV_y, dVdT=dVdT_y, dVdn=dVdn_y)
-            call Laplace(y_in=y, IFT_out=IFT, Pcap_out= Pcap)
+            
+                
+            if (kind == "dew") then
+                call Laplace(y_in=z, IFT_out=IFT, Pcap_out= Pcap)
+            else
+                call Laplace(y_in=y, IFT_out=IFT, Pcap_out= Pcap)
+            end if
 
             F(:nc) = X(:nc) + lnFug_y - lnFug_z
             F(nc + 1) = sum(y - z)
             F(nc + 2) = Pz - Py + Pcap
             F(nc + 3) = X(ns) - S
-            
             !! Jacobian intermediate variables
             var_dFn2 = 1.0E-11*(8._pr*cos(ang_cont)/r_poro)*(IFT**3) !! 1.0E-11 is an unit conversion 
-            do i=1,nc
-                var_dFn2_dK = var_dFn2_dK+(Par(i)*((y(i)*dVdn_y(i)/(Vy**2))-(1._pr/Vy)))
-                var_dFn2_dT = var_dFn2_dT+(Par(i)*((y(i)*dVdT_y/(Vy**2))-(z(i)*dVdT_z/(Vz**2))))
-                var_dFn2_dPz = var_dFn2_dPz + (-Par(i)*z(i))
-                var_dFn2_dPy = var_dFn2_dPy + (Par(i)*y(i))
-            end do
-            
+            !do i=1,nc
+            !    var_dFn2_dK = var_dFn2_dK+(Par(i)*((y(i)*dVdn_y(i)/(Vy**2))-(1._pr/Vy)))
+            !    var_dFn2_dT = var_dFn2_dT+(Par(i)*((y(i)*dVdT_y/(Vy**2))-(z(i)*dVdT_z/(Vz**2))))
+            !    var_dFn2_dPz = var_dFn2_dPz + (-Par(i)*z(i))
+            !    var_dFn2_dPy = var_dFn2_dPy + (Par(i)*y(i))
+            !end do
+                var_dFn2_dK = sum(Par*((y*dVdn_y/(Vy**2))-(1._pr/Vy)))
+                var_dFn2_dT = sum(Par*((y*dVdT_y/(Vy**2))-(z*dVdT_z/(Vz**2))))
+                var_dFn2_dPz = sum(-Par*z)
+                var_dFn2_dPy = sum(Par*y)
+
             !! Jacobian Matrix
             do j=1,nc
                 df(:nc, j) = dlnphi_dn_y(:, j) * y(j)
@@ -300,17 +310,17 @@ contains
 
             select case(kind)
                 case("bubble")
-                point = EquilibriumState(&
+                point = NanoEquilibriumState(&
                     kind="bubble", x=z, Vx=Vz, y=y, Vy=Vy, &
                     T=T, Px=Pz, Py=Py, Pcap=Pcap, beta=0._pr, iters=iters &
                     )
                 case("dew")
-                point = EquilibriumState(&
+                point = NanoEquilibriumState(&
                     kind="dew", x=y, Vx=Vy, y=z, Vy=Vz, &
                     T=T, Px=Py, Py=Pz, Pcap=Pcap, beta=1._pr, iters=iters &
                     )
                 case default
-                point = EquilibriumState(&
+                point = NanoEquilibriumState(&
                     kind=kind, x=z, Vx=Vz, y=y, Vy=Vy, &
                     T=T, Px=Pz, Py=Py, Pcap=Pcap, beta=0._pr, iters=iters &
                     )
@@ -400,7 +410,7 @@ contains
         do i=1,size(pt2%cps)
            cp = minloc(&
               (pt2%points%T - pt2%cps(i)%T)**2 &
-              + (pt2%points%Py - pt2%cps(i)%Py)**2, dim=1&
+              + (pt2%points%Py - pt2%cps(i)%P)**2, dim=1&
               )
            cps = [cps, cp]
         end do
