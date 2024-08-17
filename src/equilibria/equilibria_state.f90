@@ -74,6 +74,7 @@ contains
       character(*), parameter :: nl = new_line("G")
 
       write(unit, *) eq%kind, eq%T, eq%P, eq%beta, eq%x, eq%y, eq%Vx, eq%Vy
+      !write(unit, *)  eq%T
 
    end subroutine write_EquilibriumState
    subroutine write_NanoEquilibriumState(eq, unit, iotype, v_list, iostat, iomsg) 
@@ -86,7 +87,8 @@ contains
 
       character(*), parameter :: nl = new_line("G")
 
-      write(unit, *) eq%kind, eq%T, eq%Py, eq%beta, eq%x, eq%y, eq%Vx, eq%Vy, eq%Px, eq%Pcap
+      write(unit, *) eq%kind, eq%T, eq%Py, eq%Px, eq%Pcap, eq%beta, eq%x, eq%y, eq%Vx, eq%Vy
+      !write(unit, *)  eq%T
 
    end subroutine write_NanoEquilibriumState
 end module yaeos__equilibria_equilibrium_state

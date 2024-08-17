@@ -25,43 +25,70 @@ program capilar_envelope
     call values(z, tc, pc, w, kij, lij, r_poro, ang_cont)
     
     ! model definition
-    model = SoaveRedlichKwong(tc, pc, w, kij, lij)
+    model = PengRobinson78(tc, pc, w, kij, lij)
     
     ! Calculate a dew point at low pressure to later 
     ! initialize the phase envelope
-    sat_point = saturation_temperature(model, z, P=1._pr, kind="dew", t0=150._pr)
+    sat_point = saturation_pressure(model, z, P0=0.5_pr, kind="bubble", t=175._pr)
+
+
+
+
+
     ! Calculate 1 point of bulk envelope
-    envelope = pt_envelope_2ph(model, z, sat_point, points=2)
-    !write(1,*) envelope%Points(1)
+    envelope = pt_envelope_2ph(model, z, sat_point, points=100)
+    write(2,*) envelope
     !write(*,*) envelope%Points(1)%y
 
     ! Capillay envelope
     allocate(Parachor(nc))
     call Parachor_values(tc, pc, w, Parachor)
     !print*, "Par", Parachor
-    call Laplace_init(envelope%points(2)%y, envelope%points(2)%Vx, envelope%points(2)%Vy,&
-                     Parachor, IFT_init, Pcap_init)
+    call Laplace_init(sat_point%y, sat_point%Vx, sat_point%Vy,&
+                     Parachor, IFT_out=IFT_init, Pcap_out=Pcap_init)
     
-    print*, Pcap_init
-
-    Py_init=envelope%points(2)%P                 
+    Py_init=sat_point%P                 
     Px_init=Py_init-Pcap_init
+    write(1,*) "-----------------Bulk------------------------"
+    write(1,*) "iteraciones bulk ",sat_point%iters
+    write(1,*) "T inicial ",sat_point%T
+    write(1,*) "Vx inicial ",sat_point%Vx
+    write(1,*) "Vy inicial ",sat_point%Vy
+    write(1,*) "K inicial ",(sat_point%y/sat_point%x)
+    write(1,*) "Pcap inicial ",Pcap_init
+    write(1,*) "Px inicial ",Px_init
+    write(1,*) "Py inicial ",Py_init
 
-    init_point%kind=envelope%points(2)%kind
-    init_point%iters=envelope%points(2)%iters
-    init_point%y=envelope%points(2)%y
-    init_point%x=envelope%points(2)%x
-    init_point%Vy=envelope%points(2)%Vy
-    init_point%Vx=envelope%points(2)%Vx
-    init_point%T=envelope%points(2)%T
+
+
+
+
+
+
+
+    init_point%kind=sat_point%kind
+    init_point%iters=sat_point%iters
+    init_point%y=sat_point%y
+    init_point%x=sat_point%x
+    init_point%Vy=sat_point%Vy
+    init_point%Vx=sat_point%Vx
+    init_point%T=sat_point%T
     init_point%Pcap=Pcap_init
     init_point%Py=Py_init
     init_point%Px=Px_init
-    init_point%beta=envelope%points(2)%beta
+    init_point%beta=sat_point%beta
     !print*, init_point
-    nano_envelope = nano_pt_envelope_2ph(model, z, r_poro, ang_cont, Parachor, init_point, points=50, iterations=500)
-    write(*,*) nano_envelope%points(:)%iters
-    write(1,*) nano_envelope
+    nano_envelope = nano_pt_envelope_2ph(model, z, r_poro, ang_cont, Parachor, init_point, points=5000)
+    write(3,*) nano_envelope
+    write(1,*) "-----------------Nano------------------------"
+    write(1,*) "iteraciones Nano ",nano_envelope%points(2)%iters
+    write(1,*) "T final ", nano_envelope%points(2)%T
+    write(1,*) "Vx final ", nano_envelope%points(2)%Vx
+    write(1,*) "Vy final ", nano_envelope%points(2)%Vy
+    write(1,*) "K final ", (nano_envelope%points(2)%y/nano_envelope%points(2)%x)
+    write(1,*) "Pcap final ", nano_envelope%points(2)%Pcap
+    write(1,*) "Px final ", nano_envelope%points(2)%Px
+    write(1,*) "Py final ", nano_envelope%points(2)%Py
 
     !print*, Parachor
 contains
@@ -87,7 +114,7 @@ contains
         Kij_in(8,2:5) = 0.135
         
         !Capillary pressure variables
-        r_poro_in=0.0000001 !radio cualquiera de 100 nm
+        r_poro_in=1E-7 !radio cualquiera de 100 nm
         ang_cont_in=1.0472 !angulo cualquiera de 60º en radianes
         !ang_cont=ang_cont*3.14/180.0 !la variable esta en º y se necesita en radianes
 
@@ -96,7 +123,7 @@ contains
         real(pr), intent(out) :: Parachor_out(:)
         real(pr), intent(in) :: tc_in(:), pc_in(:), w_in(:)
         !Parachor :: cm^3/mol*(mN/m)^1/4
-        Parachor_out= 40.1684*(0.151-0.0464*w_in)*(tc_in**(13.0/12.0))/(pc_in**(5.0/6.0))  ! https://doi.org/10.1002/cjce.5450750617 // eq(12)
+        Parachor_out= 40.1684*(0.151-0.0464*w_in)*(tc_in**(13._pr/12._pr))/(pc_in**(5._pr/6._pr))  ! https://doi.org/10.1002/cjce.5450750617 // eq(12)
     end subroutine Parachor_values
     subroutine Laplace_init(y_in, Vz_in, Vy_in, Par_in, IFT_out, Pcap_out)
         !real(pr), intent(in) :: r_poro_in, ang_cont_in, Par_in(:)
@@ -111,9 +138,9 @@ contains
             !print*, (Par_in(i)/1000.0)*(z(i)/Vz_in-y_in(i)/Vy_in)
         !end do
         !print*, 0.1*cos(ang_cont)*2.0*((sum((Par_in/1000.0)*(z/Vz_in-y_in/Vy_in)))**4)
-        IFT_out = sum((Par_in/1000.0)*(z/Vz_in-y_in/Vy_in))
+        IFT_out = sum((Par_in/1E3)*(z/Vz_in-y_in/Vy_in))
         !Pcap [bar]
-        Pcap_out = (0.00000001*2.0*(IFT_out**4)*cos(ang_cont))/r_poro !E=4
+        Pcap_out = (1E-8*2._pr*(IFT_out**4)*cos(ang_cont))/r_poro !E=4
         
     end subroutine Laplace_init
 

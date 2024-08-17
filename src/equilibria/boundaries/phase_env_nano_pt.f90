@@ -171,7 +171,10 @@ contains
 
             F = 0
             dF = 0
-            
+
+
+
+
             K = exp(X(:nc))
             T = exp(X(nc+1))
             Pz = X(nc+2)
@@ -190,6 +193,8 @@ contains
                 kind_y = "stable"
             end select   
 
+
+
             call model%lnphi_pt(&
                 z, Pz, T, V=Vz, root_type=kind_z, &
                 lnFug=lnFug_z, dlnPhidt=dlnphi_dt_z, &
@@ -201,17 +206,18 @@ contains
                 dlnPhidp=dlnphi_dp_y, dlnphidn=dlnphi_dn_y, &
                 dPdV=dPdV_y, dVdT=dVdT_y, dVdn=dVdn_y)
             
-                
             if (kind == "dew") then
                 call Laplace(y_in=z, IFT_out=IFT, Pcap_out= Pcap)
             else
                 call Laplace(y_in=y, IFT_out=IFT, Pcap_out= Pcap)
-            end if
+            end if                 
+
 
             F(:nc) = X(:nc) + lnFug_y - lnFug_z
             F(nc + 1) = sum(y - z)
             F(nc + 2) = Pz - Py + Pcap
             F(nc + 3) = X(ns) - S
+            write(1,*) F
             !! Jacobian intermediate variables
             var_dFn2 = 1.0E-11*(8._pr*cos(ang_cont)/r_poro)*(IFT**3) !! 1.0E-11 is an unit conversion 
             !do i=1,nc
@@ -246,7 +252,7 @@ contains
             df(nc + 3, ns) = 1._pr
 
             dFdS = 0._pr
-            dFdS(nc + 2) = -1._pr
+            dFdS(nc + 3) = -1._pr
         end subroutine foo
         
         subroutine update_spec(X, ns, S, dS, dXdS, step_iters)
