@@ -123,20 +123,21 @@ contains
         )
 
     contains
-        subroutine Laplace(y_in, IFT_out, Pcap_out)
-            !real(pr), intent(in) :: r_poro_in, ang_cont_in, Par_in(:)
-            !real(pr), intent(in) :: Vx_in, Vy_in, y_in(:)
-            real(pr), intent(in) :: y_in(:)
+        subroutine Laplace(y_in, z_in, Vy_in, Vz_in, IFT_out, Pcap_out)
+            !! Laplace calculation of interfasial tension and capillary pressure
+            !! This equation seems to need the densities of the ligth and heavy phases
+            !! intead of the incipent phase for y, like the rest of the algorithm
+            real(pr), intent(in) :: y_in(:), z_in(:), Vy_in, Vz_in
             real(pr), intent(out) :: IFT_out, Pcap_out
             integer :: i
-            !Par [cm^3/mol * (mN/m)^1/4], r_poro [m], ang_cont [rad]
-            !IFT [(mN/m)^1/4]
+            !! Par [cm^3/mol * (mN/m)^1/4], r_poro [m], ang_cont [rad]
+            !! IFT [(mN/m)^1/4]
             !do i=1,nc
             !    IFT_out=IFT_out+((Par(i)/1000.0)*(z(i)/Vz-y_in(i)/Vy))
             !end do
-            IFT_out = sum((Par/1000.0)*(z/Vz-y_in/Vy))
-            !Pcap [bar]
-            Pcap_out = (0.00000001*2.0*(IFT_out**4)*cos(ang_cont))/r_poro !E=4
+            IFT_out = sum((Par/1E3)*(z_in/Vz_in-y_in/Vy_in))
+            !! Pcap [bar]
+            Pcap_out = (1E-8*2._pr*(IFT_out**4)*cos(ang_cont))/r_poro !E=4
         end subroutine Laplace
         
         subroutine foo(X, ns, S, F, dF, dFdS)   
@@ -207,9 +208,9 @@ contains
                 dPdV=dPdV_y, dVdT=dVdT_y, dVdn=dVdn_y)
             
             if (kind == "dew") then
-                call Laplace(y_in=z, IFT_out=IFT, Pcap_out= Pcap)
+                call Laplace(y_in=z, z_in=y, Vy_in=Vz, Vz_in=Vy, IFT_out=IFT, Pcap_out= Pcap)
             else
-                call Laplace(y_in=y, IFT_out=IFT, Pcap_out= Pcap)
+                call Laplace(y_in=y, z_in=z, Vy_in=Vy, Vz_in=Vz, IFT_out=IFT, Pcap_out= Pcap)
             end if                 
 
 
@@ -217,7 +218,7 @@ contains
             F(nc + 1) = sum(y - z)
             F(nc + 2) = Pz - Py + Pcap
             F(nc + 3) = X(ns) - S
-            write(1,*) F
+            
             !! Jacobian intermediate variables
             var_dFn2 = 1.0E-11*(8._pr*cos(ang_cont)/r_poro)*(IFT**3) !! 1.0E-11 is an unit conversion 
             !do i=1,nc
@@ -226,10 +227,10 @@ contains
             !    var_dFn2_dPz = var_dFn2_dPz + (-Par(i)*z(i))
             !    var_dFn2_dPy = var_dFn2_dPy + (Par(i)*y(i))
             !end do
-                var_dFn2_dK = sum(Par*((y*dVdn_y/(Vy**2))-(1._pr/Vy)))
-                var_dFn2_dT = sum(Par*((y*dVdT_y/(Vy**2))-(z*dVdT_z/(Vz**2))))
-                var_dFn2_dPz = sum(-Par*z)
-                var_dFn2_dPy = sum(Par*y)
+            var_dFn2_dK = sum(Par*((y*dVdn_y/(Vy**2))-(1._pr/Vy)))
+            var_dFn2_dT = sum(Par*((y*dVdT_y/(Vy**2))-(z*dVdT_z/(Vz**2))))
+            var_dFn2_dPz = sum(-Par*z)
+            var_dFn2_dPy = sum(Par*y)
 
             !! Jacobian Matrix
             do j=1,nc

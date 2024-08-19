@@ -72,9 +72,13 @@ contains
       character(*), intent(inout) :: iomsg
 
       character(*), parameter :: nl = new_line("G")
+      character(len=16) :: cadenaT, cadenaP
 
-      write(unit, *) eq%kind, eq%T, eq%P, eq%beta, eq%x, eq%y, eq%Vx, eq%Vy
-      !write(unit, *)  eq%T
+      !write(unit, *) eq%kind, eq%T, eq%P, eq%beta, eq%x, eq%y, eq%Vx, eq%Vy
+      !write(unit,*)  eq%T, eq%P
+      write(cadenaT,"(F16.8)")  eq%T
+      write(cadenaP,"(F16.8)")  eq%P
+      write(unit,*) cadenaT, ",", cadenaP
 
    end subroutine write_EquilibriumState
    subroutine write_NanoEquilibriumState(eq, unit, iotype, v_list, iostat, iomsg) 
@@ -86,9 +90,15 @@ contains
       character(*), intent(inout) :: iomsg
 
       character(*), parameter :: nl = new_line("G")
+      character(len=16) :: cadenaT, cadenaPy, cadenaPx, cadenaPcap
 
-      write(unit, *) eq%kind, eq%T, eq%Py, eq%Px, eq%Pcap, eq%beta, eq%x, eq%y, eq%Vx, eq%Vy
-      !write(unit, *)  eq%T
+      !write(unit, *) eq%kind, eq%T, eq%Py, eq%Px, eq%Pcap, eq%beta, eq%x, eq%y, eq%Vx, eq%Vy
+      !write(cadenaT,"(F8.4)")  eq%T, eq%Py, eq%Px, eq%Pcap
+      write(cadenaT,"(F16.8)")  eq%T
+      write(cadenaPy,"(F16.8)")  eq%Py
+      write(cadenaPx,"(F16.8)")  eq%Px
+      write(cadenaPcap,"(F16.8)")  eq%Pcap
+      write(unit,*) cadenaT, ",", cadenaPy, ",", cadenaPx, ",", cadenaPcap
 
    end subroutine write_NanoEquilibriumState
 end module yaeos__equilibria_equilibrium_state
