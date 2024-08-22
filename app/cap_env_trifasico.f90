@@ -1,4 +1,4 @@
-program capilar_envelope
+program ejemplo_gera
     
     use yaeos, only: pr, &
         SoaveRedlichKwong, PengRobinson76, PengRobinson78, RKPR, &
@@ -8,7 +8,7 @@ program capilar_envelope
     !use yaeos__equilibria_equilibrium_state
     !use yaeos__equilibria_boundaries_nano_phase_envelopes_pt
         implicit none
-    integer, parameter :: nc=8
+    integer, parameter :: nc=3
     class(ArModel), allocatable :: model ! Thermodynamic model to be used
     type(EquilibriumState) :: sat_point   ! Init bulk
     type(NanoEquilibriumState) :: init_point ! Init Nano
@@ -26,14 +26,14 @@ program capilar_envelope
     call values(z, tc, pc, w, kij, lij, r_poro, ang_cont)
     
     ! model definition
-    model = PengRobinson78(tc, pc, w, kij, lij)
+    model = SoaveRedlichKwong(tc, pc, w, kij, lij)
     
     !! ------------------------- BUBBLE ENVELOPE ------------------
     ! initialize the phase envelope
-    sat_point = saturation_pressure(model, z, P0=0.5_pr, kind="bubble", t=175._pr)
+    sat_point = saturation_pressure(model, z, P0=700._pr, kind="bubble", t=145._pr)
 
     ! Calculate 1 point of bulk envelope
-    envelope = pt_envelope_2ph(model, z, sat_point, points=150)
+    envelope = pt_envelope_2ph(model, z, sat_point, points=200)
     write(1,*) envelope
 
     ! Capillay envelope
@@ -45,15 +45,16 @@ program capilar_envelope
     
     Py_init=sat_point%P                 
     Px_init=Py_init-Pcap_init
-    !write(1,*) "-----------------Bulk------------------------"
-    !write(1,*) "iteraciones bulk ",sat_point%iters
-    !write(1,*) "T inicial ",sat_point%T
-    !write(1,*) "Vx inicial ",sat_point%Vx
-    !write(1,*) "Vy inicial ",sat_point%Vy
-    !write(1,*) "K inicial ",(sat_point%y/sat_point%x)
-    !write(1,*) "Pcap inicial ",Pcap_init
-    !write(1,*) "Px inicial ",Px_init
-    !write(1,*) "Py inicial ",Py_init
+    write(*,*) "-----------------Bulk------------------------"
+    write(*,*) "iteraciones bulk ",sat_point%iters
+    write(*,*) "kind bulk ",sat_point%kind
+    write(*,*) "T inicial ",sat_point%T
+    write(*,*) "Vx inicial ",sat_point%Vx
+    write(*,*) "Vy inicial ",sat_point%Vy
+    write(*,*) "K inicial ",(sat_point%y/sat_point%x)
+    write(*,*) "Pcap inicial ",Pcap_init
+    write(*,*) "Px inicial ",Px_init
+    write(*,*) "Py inicial ",Py_init
 
     init_point%kind=sat_point%kind
     init_point%iters=sat_point%iters
@@ -67,49 +68,23 @@ program capilar_envelope
     init_point%Px=Px_init
     init_point%beta=sat_point%beta
 
+    write(3,*) "nano"
     nano_envelope = nano_pt_envelope_2ph(model, z, r_poro, ang_cont,&
-                     Parachor, init_point, points=10000)
-    write(3,*) nano_envelope
-    !write(1,*) "-----------------Nano------------------------"
-    !write(1,*) "iteraciones Nano ",nano_envelope%points(1)%iters
-    !write(1,*) "T final ", nano_envelope%points(1)%T
-    !write(1,*) "Vx final ", nano_envelope%points(1)%Vx
-    !write(1,*) "Vy final ", nano_envelope%points(1)%Vy
-    !write(1,*) "K final ", (nano_envelope%points(1)%y/nano_envelope%points(1)%x)
-    !write(1,*) "Pcap final ", nano_envelope%points(1)%Pcap
-    !write(1,*) "Px final ", nano_envelope%points(1)%Px
-    !write(1,*) "Py final ", nano_envelope%points(1)%Py
+                     Parachor, init_point, points=2000, iterations=1000)
+    write(2,*) nano_envelope
+    write(*,*) "-----------------Nano------------------------"
+    write(*,*) "iteraciones Nano ",nano_envelope%points(1)%iters
+    write(*,*) "T final ", nano_envelope%points(1)%T
+    write(*,*) "Vx final ", nano_envelope%points(1)%Vx
+    write(*,*) "Vy final ", nano_envelope%points(1)%Vy
+    write(*,*) "K final ", (nano_envelope%points(1)%y/nano_envelope%points(1)%x)
+    write(*,*) "Pcap final ", nano_envelope%points(1)%Pcap
+    write(*,*) "Px final ", nano_envelope%points(1)%Px
+    write(*,*) "Py final ", nano_envelope%points(2)%Py
     !write(cadena,"(F16.8)") nano_envelope%points(1)%Py
     !write(*,*) "Py final ", cadena
 
-    !! -------------------------- DEW ENVELOPE ---------------------------
-
-    sat_point = saturation_temperature(model, z, P=0.5_pr, kind="dew", t0=175._pr)
-
-    ! Calculate 1 point of bulk envelope
-    envelope = pt_envelope_2ph(model, z, sat_point, points=100)
-    write(2,*) envelope
-
-    call Laplace_init(y_in=sat_point%y, x_in=sat_point%x,& 
-    Vx_in=sat_point%Vx, Vy_in=sat_point%Vy,&
-     Par_in=Parachor, IFT_out=IFT_init, Pcap_out=Pcap_init)
-
-    Py_init=sat_point%P                 
-    Px_init=Py_init-Pcap_init
-    init_point%kind=sat_point%kind
-    init_point%iters=sat_point%iters
-    init_point%y=sat_point%y
-    init_point%x=sat_point%x
-    init_point%Vy=sat_point%Vy
-    init_point%Vx=sat_point%Vx
-    init_point%T=sat_point%T
-    init_point%Pcap=Pcap_init
-    init_point%Py=Py_init
-    init_point%Px=Px_init
-    init_point%beta=sat_point%beta
-    nano_envelope = nano_pt_envelope_2ph(model, z, r_poro, ang_cont,&
-                     Parachor, init_point, points=500)
-    write(4,*) nano_envelope
+   
 
     !sat_point = saturation_pressure(model, z, P0=900._pr, kind="liquid-liquid", t=500._pr)
 
@@ -122,21 +97,20 @@ contains
                                 z_in(:), kij_in(:,:), lij_in(:,:),&
                                 r_poro_in, ang_cont_in
         
-        !! names="CO2" "C1-N2" "C2-C3" "C4" "C5" "C6" "C7+n" "Asph"
+        !! names="CH4" "C50-C60" "Asph"
         !! composition vector                        
-        z_in = (/0.0246,0.3694,0.0752,0.0193,0.0157,0.0162,0.47145,0.00815/)
+        z_in = (/0.621476711621686, 0.294896838294686, 0.0836264500836264/)
         !! Critical Temperature
-        tc_in = (/304.0390,189.4280,339.8720,419.8170,465.0940,507.3170,860.3720,1424.8170/)
+        tc_in = (/190.56, 956.95, 1286.75/)
         !! Critical Pressure
-        pc_in = (/73.7900,45.8300,45.4100,37.5400,33.8000,32.9000,12.4600,12.2900/)
+        pc_in = (/45.99, 13.72, 18.11/)
         !! Acentric Factor
-        w_in = (/0.225000,0.008500,0.127100,0.187800,0.239700,0.275000,1.022000,1.441000/)
+        w_in = (/0.0115, 1.313, 1.274/)
         lij_in = 0
         kij_in = 0
-        Kij_in(2,7) = 0.053
-        Kij_in(2:5,8) = 0.135
-        Kij_in(7,2) = 0.053
-        Kij_in(8,2:5) = 0.135
+        Kij_in(1,3) = 0.017
+        Kij_in(3,1) = 0.017
+
         
         !Capillary pressure variables
         r_poro_in=1E-7 !radio cualquiera de 100 nm
@@ -148,7 +122,9 @@ contains
         real(pr), intent(out) :: Parachor_out(:)
         real(pr), intent(in) :: tc_in(:), pc_in(:), w_in(:)
         !Parachor :: [cm^3/mol * (mN/m)^1/4]
-        Parachor_out= 40.1684*(0.151-0.0464*w_in)*(tc_in**(13._pr/12._pr))/(pc_in**(5._pr/6._pr))  ! https://doi.org/10.1002/cjce.5450750617 // eq(12)
+        !Parachor_out= 40.1684*(0.151-0.0464*w_in)*(tc_in**(13._pr/12._pr))/(pc_in**(5._pr/6._pr))  ! https://doi.org/10.1002/cjce.5450750617 // eq(12)
+        Parachor_out = (/0.07405, 2.76, 3.2/)*1E3
+
     end subroutine Parachor_values
     subroutine Laplace_init(y_in, x_in, Vx_in, Vy_in, Par_in, IFT_out, Pcap_out)
         !real(pr), intent(in) :: r_poro_in, ang_cont_in, Par_in(:)
@@ -164,5 +140,4 @@ contains
         
     end subroutine Laplace_init
 
-end program capilar_envelope
-
+end program ejemplo_gera

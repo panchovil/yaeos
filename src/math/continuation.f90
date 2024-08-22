@@ -195,8 +195,9 @@ contains
 
       real(pr) :: X0(size(X))
 
-      real(pr) :: dX(size(X)), solve_tol
+      real(pr) :: dX(size(X)), solve_tol ,first_tol
 
+      first_tol = 15.0_pr
       solve_tol = optval(tol, 1.e-5_pr)
 
       dX = 20
@@ -204,6 +205,7 @@ contains
       X0 = X
       newton: do iters = 1, max_iters
          ! Converged point
+
          if (maxval(abs(dx)) < solve_tol .or. maxval(abs(F)) < solve_tol) exit newton
 
          call fun(X, ns, S, F, dF, dFdS)
@@ -212,11 +214,23 @@ contains
          dX = solve_system(dF, -F)
 
          ! Fix the step
-         do while(maxval(abs(dx)) > 0.08)
-            dX = dX/2
-         end do
+         if(point==1)then
+            do while(maxval(abs(dx)) > first_tol)
+               dX = dX/2
+            end do
+         else
+            do while(maxval(abs(dx)) > 0.08)
+               dX = dX/2
+            end do
+            if (iters > 10)  then
+               ! too many iterations (sometimes due to oscillatory behavior 
+               ! near critical point) --> Reduce it
+               dX = dX/2
+            endif
+         end if
 
          X = X + dX
       end do newton
+
    end subroutine full_newton
 end module yaeos__math_continuation

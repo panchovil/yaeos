@@ -218,7 +218,7 @@ contains
             F(nc + 1) = sum(y - z)
             F(nc + 2) = Pz - Py + Pcap
             F(nc + 3) = X(ns) - S
-            
+            !write(3,*) F
             !! Jacobian intermediate variables
             var_dFn2 = 1.0E-11*(8._pr*cos(ang_cont)/r_poro)*(IFT**3) !! 1.0E-11 is an unit conversion 
             !do i=1,nc
@@ -272,7 +272,12 @@ contains
             !! Iterations used in the solver
    
             real(pr) :: maxdS
-   
+
+            integer :: pindex(2)
+            pindex = [nc+2, nc+3]
+            dXdS = (1/(1+abs(X(pindex))))*dXdS(pindex)
+            
+            
             ! =====================================================================
             ! Update specification
             ! - Dont select T or P near critical points
@@ -286,18 +291,24 @@ contains
                ns = maxloc(abs(dXdS), dim=1)
                maxdS = 0.05_pr
             end if
-   
             dS = dXdS(ns) * dS
             dXdS = dXdS/dXdS(ns)
-   
-            dS = sign(1.0_pr, dS) * minval([ &
-               max(sqrt(abs(X(ns))/10._pr), 0.1_pr), &
-               abs(dS)*3/step_iters &
-               ] &
-               )
-   
+            if (Pcap>1E-2) then
+                dS = sign(1.0_pr, dS) * minval([ &
+                max(sqrt(abs(X(ns))/10._pr), 0.1_pr), &
+                abs(dS)*300/step_iters &
+                ] &
+                )
+            else 
+                dS = sign(1.0_pr, dS) * minval([ &
+                max(sqrt(abs(X(ns))/10._pr), 0.1_pr), &
+                abs(dS)*1/step_iters &
+                ] &
+                )
+            endif
             dS = sign(1.0_pr, dS) * maxval([abs(dS), maxdS])
-   
+            write(3,*) Pcap
+
             call save_point(X, step_iters)
             call detect_critical(X, dXdS, ns, S, dS)
         end subroutine update_spec 

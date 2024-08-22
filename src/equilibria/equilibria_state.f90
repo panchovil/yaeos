@@ -78,7 +78,7 @@ contains
       !write(unit,*)  eq%T, eq%P
       write(cadenaT,"(F16.8)")  eq%T
       write(cadenaP,"(F16.8)")  eq%P
-      write(unit,*) cadenaT, ",", cadenaP
+      write(unit,*) cadenaT, cadenaP, eq%y/eq%x
 
    end subroutine write_EquilibriumState
    subroutine write_NanoEquilibriumState(eq, unit, iotype, v_list, iostat, iomsg) 
@@ -98,7 +98,7 @@ contains
       write(cadenaPy,"(F16.8)")  eq%Py
       write(cadenaPx,"(F16.8)")  eq%Px
       write(cadenaPcap,"(F16.8)")  eq%Pcap
-      write(unit,*) cadenaT, ",", cadenaPy, ",", cadenaPx, ",", cadenaPcap
+      write(unit,*) cadenaT, ",", cadenaPy, ",", cadenaPx, ",", cadenaPcap, "  iters", eq%iters, eq%y/eq%x
 
    end subroutine write_NanoEquilibriumState
 end module yaeos__equilibria_equilibrium_state
