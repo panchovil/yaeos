@@ -197,7 +197,7 @@ contains
 
       real(pr) :: dX(size(X)), solve_tol ,first_tol
 
-      first_tol = 15.0_pr
+      first_tol = 10.0_pr
       solve_tol = optval(tol, 1.e-5_pr)
 
       dX = 20

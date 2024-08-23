@@ -68,7 +68,6 @@ program ejemplo_gera
     init_point%Px=Px_init
     init_point%beta=sat_point%beta
 
-    write(3,*) "nano"
     nano_envelope = nano_pt_envelope_2ph(model, z, r_poro, ang_cont,&
                      Parachor, init_point, points=2000, iterations=1000)
     write(2,*) nano_envelope
@@ -81,9 +80,37 @@ program ejemplo_gera
     write(*,*) "Pcap final ", nano_envelope%points(1)%Pcap
     write(*,*) "Px final ", nano_envelope%points(1)%Px
     write(*,*) "Py final ", nano_envelope%points(2)%Py
-    !write(cadena,"(F16.8)") nano_envelope%points(1)%Py
-    !write(*,*) "Py final ", cadena
 
+    !! -------------------------- DEW ENVELOPE ---------------------------
+
+    sat_point = saturation_temperature(model, z, P=0.5_pr, kind="dew", t0=200._pr)
+    !sat_point = saturation_pressure(model, z, P0=0.5_pr, kind="dew", t=300._pr)
+
+
+    ! Calculate 1 point of bulk envelope
+    envelope = pt_envelope_2ph(model, z, sat_point, points=100)
+    write(3,*) envelope
+
+    call Laplace_init(y_in=sat_point%y, x_in=sat_point%x,& 
+    Vx_in=sat_point%Vx, Vy_in=sat_point%Vy,&
+     Par_in=Parachor, IFT_out=IFT_init, Pcap_out=Pcap_init)
+
+    Py_init=sat_point%P                 
+    Px_init=Py_init-Pcap_init
+    init_point%kind=sat_point%kind
+    init_point%iters=sat_point%iters
+    init_point%y=sat_point%y
+    init_point%x=sat_point%x
+    init_point%Vy=sat_point%Vy
+    init_point%Vx=sat_point%Vx
+    init_point%T=sat_point%T
+    init_point%Pcap=Pcap_init
+    init_point%Py=Py_init
+    init_point%Px=Px_init
+    init_point%beta=sat_point%beta
+    nano_envelope = nano_pt_envelope_2ph(model, z, r_poro, ang_cont,&
+                     Parachor, init_point, points=500)
+    write(4,*) nano_envelope
    
 
     !sat_point = saturation_pressure(model, z, P0=900._pr, kind="liquid-liquid", t=500._pr)

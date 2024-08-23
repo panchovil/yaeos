@@ -68,8 +68,8 @@ program capilar_envelope
     init_point%beta=sat_point%beta
 
     nano_envelope = nano_pt_envelope_2ph(model, z, r_poro, ang_cont,&
-                     Parachor, init_point, points=10000)
-    write(3,*) nano_envelope
+                     Parachor, init_point, points=800)
+    write(2,*) nano_envelope
     !write(1,*) "-----------------Nano------------------------"
     !write(1,*) "iteraciones Nano ",nano_envelope%points(1)%iters
     !write(1,*) "T final ", nano_envelope%points(1)%T
@@ -84,11 +84,13 @@ program capilar_envelope
 
     !! -------------------------- DEW ENVELOPE ---------------------------
 
-    sat_point = saturation_temperature(model, z, P=0.5_pr, kind="dew", t0=175._pr)
+    sat_point = saturation_temperature(model, z, P=0.5_pr, kind="dew", t0=200._pr)
+    !sat_point = saturation_pressure(model, z, P0=0.5_pr, kind="dew", t=300._pr)
+
 
     ! Calculate 1 point of bulk envelope
     envelope = pt_envelope_2ph(model, z, sat_point, points=100)
-    write(2,*) envelope
+    write(3,*) envelope
 
     call Laplace_init(y_in=sat_point%y, x_in=sat_point%x,& 
     Vx_in=sat_point%Vx, Vy_in=sat_point%Vy,&
@@ -110,6 +112,7 @@ program capilar_envelope
     nano_envelope = nano_pt_envelope_2ph(model, z, r_poro, ang_cont,&
                      Parachor, init_point, points=500)
     write(4,*) nano_envelope
+    print*, Py_init, Px_init
 
     !sat_point = saturation_pressure(model, z, P0=900._pr, kind="liquid-liquid", t=500._pr)
 

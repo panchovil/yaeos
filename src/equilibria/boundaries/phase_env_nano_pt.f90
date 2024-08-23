@@ -102,13 +102,18 @@ contains
         select case(first_point%kind)
         case("bubble", "liquid-liquid")
         X(:nc) = log(first_point%y/z)
+        !X(nc+2) = first_point%Px
+        !X(nc+3) = first_point%Py
         case("dew")
         X(:nc) = log(first_point%x/z)
+        !X(nc+2) = first_point%Py
+        !X(nc+3) = first_point%Px
         end select
 
-        X(nc+1) = log(first_point%T)
         X(nc+2) = first_point%Px
         X(nc+3) = first_point%Py
+        X(nc+1) = log(first_point%T)
+
         S0 = X(ns)
 
         allocate(nano_envelopes%points(0), nano_envelopes%cps(0))
@@ -178,22 +183,31 @@ contains
 
             K = exp(X(:nc))
             T = exp(X(nc+1))
-            Pz = X(nc+2)
-            Py = X(nc+3)
-            
+
+
+
             y = K*z
             select case(kind)
             case ("bubble")
                 kind_z = "liquid"
                 kind_y = "vapor"
+                Pz = X(nc+2)
+                Py = X(nc+3)
             case ("dew")
                 kind_z = "vapor"
                 kind_y = "liquid"
+                Py = X(nc+2)
+                Pz = X(nc+3)
             case default
                 kind_z = "stable"
                 kind_y = "stable"
+                Pz = X(nc+2)
+                Py = X(nc+3)
             end select   
 
+            Pz = X(nc+2)
+            Py = X(nc+3)
+            !write(4,*) Py, Pz
 
 
             call model%lnphi_pt(&
@@ -207,47 +221,84 @@ contains
                 dlnPhidp=dlnphi_dp_y, dlnphidn=dlnphi_dn_y, &
                 dPdV=dPdV_y, dVdT=dVdT_y, dVdn=dVdn_y)
             
-            if (kind == "dew") then
-                call Laplace(y_in=z, z_in=y, Vy_in=Vz, Vz_in=Vy, IFT_out=IFT, Pcap_out= Pcap)
-            else
+            ! if (kind == "dew") then
+            !     call Laplace(y_in=z, z_in=y, Vy_in=Vz, Vz_in=Vy, IFT_out=IFT, Pcap_out= Pcap)
+            !     !Cuando es curva dew lo que representa las variables se invierte
+            !     !Vy = Vliq
+            !     !Vz = Vvap
+            !     !Py = Pliq
+            !     !Pz = Pvap
+            !     !y = x
+            !     !z = y
+            !     var_dFn2 = 1.0E-11*(8._pr*cos(ang_cont)/r_poro)*(IFT**3) !! 1.0E-11 is an unit conversion //corregida
+            !     var_dFn2_dK = sum(Par*((1._pr/Vy)-(y*dVdn_y/(Vy**2)))) !! corregida
+            !     var_dFn2_dT = sum(Par*((z*dVdT_z/(Vz**2))-(y*dVdT_y/(Vy**2)))) !!corregida
+            !     var_dFn2_dPliq = sum(-Par*y)
+            !     var_dFn2_dPvap = sum(Par*z)
+
+            !     !write(4,*) Py, Pz, Pcap
+
+            !     F(:nc) = X(:nc) + lnFug_y - lnFug_z !como se toma la inversa de K(osea x/y), va a hacer que el ln cambie el signo por lo tanto la ec queda igual
+            !     F(nc + 1) = sum(y - z)
+            !     F(nc + 2) = Py - Pz + Pcap !Pliq-Pvap+Pcao
+            !     F(nc + 3) = X(ns) - S
+            !     write(4,*) F
+
+            !     do j=1,nc
+            !         df(:nc, j) = dlnphi_dn_y(:, j) * y(j)
+            !         df(j, j) = dF(j, j) + 1._pr
+            !     end do
+    
+            !     df(:nc, nc + 1) = T * (dlnphi_dt_y - dlnphi_dt_z)
+            !     df(:nc, nc + 2) = -(1._pr/Py) - (dlnphi_dp_y)
+            !     df(:nc, nc + 3) = (1._pr/Pz) + (dlnphi_dp_z)
+          
+            !     df(nc + 1, :nc) = y
+                
+            !     df(nc + 2, :nc) = y*var_dFn2*var_dFn2_dK
+            !     df(nc + 2, nc + 1) = var_dFn2*T*var_dFn2_dT
+            !     df(nc + 2, nc + 2) = 1._pr + var_dFn2*var_dFn2_dPliq*(1._pr/(dPdV_y*(Vy**2))) 
+            !     df(nc + 2, nc + 3) = - 1._pr + var_dFn2*var_dFn2_dPvap*(1._pr/(dPdV_z*(Vz**2)))
+
+            ! else 
                 call Laplace(y_in=y, z_in=z, Vy_in=Vy, Vz_in=Vz, IFT_out=IFT, Pcap_out= Pcap)
-            end if                 
+
+                var_dFn2 = 1.0E-11*(8._pr*cos(ang_cont)/r_poro)*(IFT**3) !! 1.0E-11 is an unit conversion 
+                var_dFn2_dK = sum(Par*((y*dVdn_y/(Vy**2))-(1._pr/Vy))) 
+                var_dFn2_dT = sum(Par*((y*dVdT_y/(Vy**2))-(z*dVdT_z/(Vz**2))))
+                var_dFn2_dPy = sum(-Par*z)
+                var_dFn2_dPz = sum(Par*y)
 
 
-            F(:nc) = X(:nc) + lnFug_y - lnFug_z
-            F(nc + 1) = sum(y - z)
-            F(nc + 2) = Pz - Py + Pcap
-            F(nc + 3) = X(ns) - S
-            !write(3,*) F
-            !! Jacobian intermediate variables
-            var_dFn2 = 1.0E-11*(8._pr*cos(ang_cont)/r_poro)*(IFT**3) !! 1.0E-11 is an unit conversion 
-            !do i=1,nc
-            !    var_dFn2_dK = var_dFn2_dK+(Par(i)*((y(i)*dVdn_y(i)/(Vy**2))-(1._pr/Vy)))
-            !    var_dFn2_dT = var_dFn2_dT+(Par(i)*((y(i)*dVdT_y/(Vy**2))-(z(i)*dVdT_z/(Vz**2))))
-            !    var_dFn2_dPz = var_dFn2_dPz + (-Par(i)*z(i))
-            !    var_dFn2_dPy = var_dFn2_dPy + (Par(i)*y(i))
-            !end do
-            var_dFn2_dK = sum(Par*((y*dVdn_y/(Vy**2))-(1._pr/Vy)))
-            var_dFn2_dT = sum(Par*((y*dVdT_y/(Vy**2))-(z*dVdT_z/(Vz**2))))
-            var_dFn2_dPz = sum(-Par*z)
-            var_dFn2_dPy = sum(Par*y)
+                F(:nc) = X(:nc) + lnFug_y - lnFug_z
+                F(nc + 1) = sum(y - z)
+                F(nc + 2) = Pz - Py + Pcap !Pliq-Pvap+Pcao
+                F(nc + 3) = X(ns) - S
+    
+                !if (kind=="dew") write(4,*) F
+                !! Jacobian intermediate variables
+    
+    
+                !! Jacobian Matrix
+                do j=1,nc
+                    df(:nc, j) = dlnphi_dn_y(:, j) * y(j)
+                    df(j, j) = dF(j, j) + 1._pr
+                end do
+    
+                df(:nc, nc + 1) = T * (dlnphi_dt_y - dlnphi_dt_z)
+                df(:nc, nc + 2) = -(1._pr/Pz) - (dlnphi_dp_z)
+                df(:nc, nc + 3) = (1._pr/Py) + (dlnphi_dp_y)
+          
+                df(nc + 1, :nc) = y
+                
+                df(nc + 2, :nc) = y*var_dFn2*var_dFn2_dK
+                df(nc + 2, nc + 1) = var_dFn2*T*var_dFn2_dT
+                df(nc + 2, nc + 2) = 1._pr + var_dFn2*var_dFn2_dPy*(1._pr/(dPdV_z*(Vz**2))) 
+                df(nc + 2, nc + 3) = - 1._pr + var_dFn2*var_dFn2_dPz*(1._pr/(dPdV_y*(Vy**2)))
+            ! end if                 
 
-            !! Jacobian Matrix
-            do j=1,nc
-                df(:nc, j) = dlnphi_dn_y(:, j) * y(j)
-                df(j, j) = dF(j, j) + 1._pr
-            end do
 
-            df(:nc, nc + 1) = T * (dlnphi_dt_y - dlnphi_dt_z)
-            df(:nc, nc + 2) = -(1._pr/Pz) - (dlnphi_dp_z)
-            df(:nc, nc + 3) = (1._pr/Py) + (dlnphi_dp_y)
-      
-            df(nc + 1, :nc) = y
-            
-            df(nc + 2, :nc) = y*var_dFn2*var_dFn2_dK
-            df(nc + 2, nc + 1) = var_dFn2*T*var_dFn2_dT
-            df(nc + 2, nc + 2) = 1._pr + var_dFn2*var_dFn2_dPz*(1._pr/(dPdV_z*(Vz**2))) 
-            df(nc + 2, nc + 3) = - 1._pr + var_dFn2*var_dFn2_dPy*(1._pr/(dPdV_y*(Vy**2)))
+
     
             df(nc + 3, :) = 0._pr
             df(nc + 3, ns) = 1._pr
@@ -293,21 +344,22 @@ contains
             end if
             dS = dXdS(ns) * dS
             dXdS = dXdS/dXdS(ns)
+            
             if (Pcap>1E-2) then
                 dS = sign(1.0_pr, dS) * minval([ &
                 max(sqrt(abs(X(ns))/10._pr), 0.1_pr), &
-                abs(dS)*300/step_iters &
+                abs(dS)*30/step_iters &
                 ] &
                 )
             else 
                 dS = sign(1.0_pr, dS) * minval([ &
                 max(sqrt(abs(X(ns))/10._pr), 0.1_pr), &
-                abs(dS)*1/step_iters &
+                abs(dS)*0.0001/step_iters &
                 ] &
                 )
             endif
             dS = sign(1.0_pr, dS) * maxval([abs(dS), maxdS])
-            write(3,*) Pcap
+            !write(3,*) Pcap
 
             call save_point(X, step_iters)
             call detect_critical(X, dXdS, ns, S, dS)
@@ -335,7 +387,7 @@ contains
                 case("dew")
                 point = NanoEquilibriumState(&
                     kind="dew", x=y, Vx=Vy, y=z, Vy=Vz, &
-                    T=T, Px=Py, Py=Pz, Pcap=Pcap, beta=1._pr, iters=iters &
+                    T=T, Px=Pz, Py=Py, Pcap=Pcap, beta=1._pr, iters=iters &
                     )
                 case default
                 point = NanoEquilibriumState(&
