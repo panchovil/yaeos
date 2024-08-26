@@ -212,7 +212,7 @@ contains
          if (maxval(abs(F)) < solve_tol) exit
 
          dX = solve_system(dF, -F)
-
+         !write(4,*) maxval(abs(F))
          ! Fix the step
          if(point==1)then
             do while(maxval(abs(dx)) > first_tol)
@@ -222,11 +222,11 @@ contains
             do while(maxval(abs(dx)) > 0.08)
                dX = dX/2
             end do
-            if (iters > 10)  then
-               ! too many iterations (sometimes due to oscillatory behavior 
-               ! near critical point) --> Reduce it
-               dX = dX/2
-            endif
+            ! if (iters > 10)  then
+            !    ! too many iterations (sometimes due to oscillatory behavior
+            !    ! near critical point) --> Reduce it
+            !    dX = dX/2
+            ! endif
          end if
 
          X = X + dX

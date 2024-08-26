@@ -183,7 +183,8 @@ contains
 
             K = exp(X(:nc))
             T = exp(X(nc+1))
-
+            Pz = X(nc+2)
+            Py = X(nc+3)
 
 
             y = K*z
@@ -191,22 +192,18 @@ contains
             case ("bubble")
                 kind_z = "liquid"
                 kind_y = "vapor"
-                Pz = X(nc+2)
-                Py = X(nc+3)
+
             case ("dew")
                 kind_z = "vapor"
                 kind_y = "liquid"
-                Py = X(nc+2)
-                Pz = X(nc+3)
+
             case default
                 kind_z = "stable"
                 kind_y = "stable"
-                Pz = X(nc+2)
-                Py = X(nc+3)
+
             end select   
 
-            Pz = X(nc+2)
-            Py = X(nc+3)
+
             !write(4,*) Py, Pz
 
 
@@ -274,7 +271,7 @@ contains
                 F(nc + 1) = sum(y - z)
                 F(nc + 2) = Pz - Py + Pcap !Pliq-Pvap+Pcao
                 F(nc + 3) = X(ns) - S
-    
+                !
                 !if (kind=="dew") write(4,*) F
                 !! Jacobian intermediate variables
     
@@ -326,9 +323,9 @@ contains
 
             integer :: pindex(2)
             pindex = [nc+2, nc+3]
-            dXdS = (1/(1+abs(X(pindex))))*dXdS(pindex)
+            dXdS(pindex) = (1._pr/(1._pr+abs(X(pindex))))*dXdS(pindex)
             
-            
+            !dXdS(nc+2:nc+3) = 0.1
             ! =====================================================================
             ! Update specification
             ! - Dont select T or P near critical points
@@ -345,30 +342,41 @@ contains
             dS = dXdS(ns) * dS
             dXdS = dXdS/dXdS(ns)
             
-            if (Pcap>1E-2) then
-                dS = sign(1.0_pr, dS) * minval([ &
-                max(sqrt(abs(X(ns))/10._pr), 0.1_pr), &
-                abs(dS)*30/step_iters &
-                ] &
-                )
-            else 
-                dS = sign(1.0_pr, dS) * minval([ &
-                max(sqrt(abs(X(ns))/10._pr), 0.1_pr), &
-                abs(dS)*0.0001/step_iters &
-                ] &
-                )
-            endif
+            
+            dS = sign(1.0_pr, dS) * minval([ &
+            max(sqrt(abs(X(ns))/10._pr), 0.1_pr), &
+            abs(dS)*5/step_iters &
+            ] &
+            )
+            
+            ! if (Pcap>1E-2) then
+            !     dS = sign(1.0_pr, dS) * minval([ &
+            !     max(sqrt(abs(X(ns))/10._pr), 0.1_pr), &
+            !     abs(dS)*30/step_iters &
+            !     ] &
+            !     )
+            ! else 
+            !     dS = sign(1.0_pr, dS) * minval([ &
+            !     max(sqrt(abs(X(ns))/10._pr), 0.1_pr), &
+            !     abs(dS)*0.0001/step_iters &
+            !     ] &
+            !     )
+            ! endif
             dS = sign(1.0_pr, dS) * maxval([abs(dS), maxdS])
-            !write(3,*) Pcap
+            ! if(kind=="dew") then
+            !     write(4,*) step_iters,exp(X(nc+1)),ns, dxds(8:)
+            !     write(4,*) X(nc+2: nc+3), Pcap
+            ! end if
 
-            call save_point(X, step_iters)
+            call save_point(X, step_iters, ns)
             call detect_critical(X, dXdS, ns, S, dS)
         end subroutine update_spec 
         
-        subroutine save_point(X, iters)
+        subroutine save_point(X, iters, ns)
             !! Save the converged point
             real(pr), intent(in) :: X(:)
             integer, intent(in) :: iters
+            integer, intent(in) :: ns
             type(NanoEquilibriumState) :: point
    
             real(pr) :: y(nc), T, Pz, Py
@@ -383,17 +391,17 @@ contains
                 point = NanoEquilibriumState(&
                     kind="bubble", x=z, Vx=Vz, y=y, Vy=Vy, &
                     T=T, Px=Pz, Py=Py, Pcap=Pcap, beta=0._pr, iters=iters &
-                    )
+                    , ns=ns)
                 case("dew")
                 point = NanoEquilibriumState(&
                     kind="dew", x=y, Vx=Vy, y=z, Vy=Vz, &
                     T=T, Px=Pz, Py=Py, Pcap=Pcap, beta=1._pr, iters=iters &
-                    )
+                    , ns=ns)
                 case default
                 point = NanoEquilibriumState(&
                     kind=kind, x=z, Vx=Vz, y=y, Vy=Vy, &
                     T=T, Px=Pz, Py=Py, Pcap=Pcap, beta=0._pr, iters=iters &
-                    )
+                    , ns=ns)
             end select
    
             nano_envelopes%points = [nano_envelopes%points, point]

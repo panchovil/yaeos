@@ -176,7 +176,6 @@ contains
          F(:nc) = X(:nc) + lnPhi_y - lnPhi_z
          F(nc + 1) = sum(y - z)
          F(nc + 2) = X(ns) - S
-
          ! Jacobian Matrix
          do j=1,nc
             df(:nc, j) = dlnphi_dn_y(:, j) * y(j)
@@ -218,6 +217,7 @@ contains
          ! - Update dS wrt specification units
          ! - Set step
          ! ---------------------------------------------------------------------
+         !write(3,*) ns, dxds(8:)
          if (maxval(abs(X(:nc))) < 0.1_pr) then
             ns = maxloc(abs(dXdS(:nc)), dim=1)
             maxdS=0.01_pr
@@ -237,14 +237,15 @@ contains
 
          dS = sign(1.0_pr, dS) * maxval([abs(dS), maxdS])
 
-         call save_point(X, step_iters)
+         call save_point(X, step_iters, ns)
          call detect_critical(X, dXdS, ns, S, dS)
       end subroutine update_spec
 
-      subroutine save_point(X, iters)
+      subroutine save_point(X, iters, ns)
          !! Save the converged point
          real(pr), intent(in) :: X(:)
          integer, intent(in) :: iters
+         integer, intent(in) :: ns
          type(EquilibriumState) :: point
 
          real(pr) :: y(nc), T, P
@@ -257,17 +258,17 @@ contains
             point = EquilibriumState(&
                kind="bubble", x=z, Vx=Vz, y=y, Vy=Vy, &
                T=T, P=P, beta=0._pr, iters=iters &
-               )
+               , ns=ns)
           case("dew")
             point = EquilibriumState(&
                kind="dew", x=y, Vx=Vy, y=z, Vy=Vz, &
                T=T, P=P, beta=1._pr, iters=iters &
-               )
+               , ns=ns)
           case default
             point = EquilibriumState(&
                kind=kind, x=z, Vx=Vz, y=y, Vy=Vy, &
                T=T, P=P, beta=0._pr, iters=iters &
-               )
+               , ns=ns)
          end select
 
          envelopes%points = [envelopes%points, point]

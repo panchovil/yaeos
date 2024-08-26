@@ -36,7 +36,7 @@ program main
          point = EquilibriumState( &
             kind=kind, T=T, P=P, x=[x1, 1 - x1], y=[y1, 1 - y1], &
             Vx=0._pr, Vy=0._pr, iters=0, beta=0._pr &
-            )
+            ,ns=0)
       end select
       exp_points = [exp_points, point]
    end do

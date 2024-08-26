@@ -24,6 +24,7 @@ module yaeos__equilibria_equilibrium_state
       !! Pressure [bar]
       real(pr) :: beta
       !! Mole fraction of light-phase
+      integer :: ns
    contains
       private
       procedure, pass :: write => write_EquilibriumState
@@ -56,6 +57,8 @@ module yaeos__equilibria_equilibrium_state
       !! Light-phase Pressure [bar]
       real(pr) :: beta
       !! Mole fraction of light-phase
+      integer :: ns
+      !! specification value
    contains
       private
       procedure, pass :: write => write_NanoEquilibriumState
@@ -78,7 +81,7 @@ contains
       !write(unit,*)  eq%T, eq%P
       write(cadenaT,"(F16.8)")  eq%T
       write(cadenaP,"(F16.8)")  eq%P
-      write(unit,*) cadenaT, cadenaP, log(eq%y/eq%x)
+      write(unit,*) cadenaT, cadenaP, "  iters", eq%iters, " ns :", eq%ns, log(eq%y/eq%x)
 
    end subroutine write_EquilibriumState
    subroutine write_NanoEquilibriumState(eq, unit, iotype, v_list, iostat, iomsg) 
@@ -98,7 +101,7 @@ contains
       write(cadenaPy,"(F16.8)")  eq%Py
       write(cadenaPx,"(F16.8)")  eq%Px
       write(cadenaPcap,"(F16.8)")  eq%Pcap
-      write(unit,*) cadenaT, ",", cadenaPy, ",", cadenaPx, ",", cadenaPcap, "  iters", eq%iters, log(eq%y/eq%x)
+      write(unit,*) cadenaT, ",", cadenaPy, ",", cadenaPx, ",", cadenaPcap, "  iters", eq%iters, " ns :", eq%ns, log(eq%y/eq%x)
 
    end subroutine write_NanoEquilibriumState
 end module yaeos__equilibria_equilibrium_state

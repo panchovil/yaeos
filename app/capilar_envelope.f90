@@ -30,10 +30,10 @@ program capilar_envelope
     
     !! ------------------------- BUBBLE ENVELOPE ------------------
     ! initialize the phase envelope
-    sat_point = saturation_pressure(model, z, P0=0.5_pr, kind="bubble", t=175._pr)
+    sat_point = saturation_pressure(model, z, P0=15.5_pr, kind="bubble", t=175._pr)
 
     ! Calculate 1 point of bulk envelope
-    envelope = pt_envelope_2ph(model, z, sat_point, points=150)
+    envelope = pt_envelope_2ph(model, z, sat_point, points=350)
     write(1,*) envelope
 
     ! Capillay envelope
@@ -68,7 +68,7 @@ program capilar_envelope
     init_point%beta=sat_point%beta
 
     nano_envelope = nano_pt_envelope_2ph(model, z, r_poro, ang_cont,&
-                     Parachor, init_point, points=800)
+                     Parachor, init_point, points=3000)
     write(2,*) nano_envelope
     !write(1,*) "-----------------Nano------------------------"
     !write(1,*) "iteraciones Nano ",nano_envelope%points(1)%iters
@@ -112,7 +112,7 @@ program capilar_envelope
     nano_envelope = nano_pt_envelope_2ph(model, z, r_poro, ang_cont,&
                      Parachor, init_point, points=500)
     write(4,*) nano_envelope
-    print*, Py_init, Px_init
+    print*, 1e-2, 0.01
 
     !sat_point = saturation_pressure(model, z, P0=900._pr, kind="liquid-liquid", t=500._pr)
 
@@ -142,7 +142,7 @@ contains
         Kij_in(8,2:5) = 0.135
         
         !Capillary pressure variables
-        r_poro_in=1E-7 !radio cualquiera de 100 nm
+        r_poro_in=1E-9 !radio cualquiera de 100 nm
         ang_cont_in=1.0472 !angulo cualquiera de 60º en radianes
         !ang_cont=ang_cont*3.14/180.0 !la variable esta en º y se necesita en radianes
 

@@ -107,15 +107,15 @@ contains
        case("bubble")
          saturation_pressure = EquilibriumState(kind="bubble", &
             iters=its, y=y, x=z, vx=vz, vy=vy, t=t, p=p, beta=0._pr&
-            )
+            , ns=0)
        case("dew")
          saturation_pressure = EquilibriumState(kind="dew", &
             iters=its, x=y, y=z, vy=vz, vx=vy, t=t, p=p, beta=1._pr&
-            )
+            , ns=0)
        case("liquid-liquid")
          saturation_pressure = EquilibriumState(kind="liquid-liquid", &
             iters=its, y=y, x=z, vx=vz, vy=vy, t=t, p=p, beta=0._pr&
-            )
+            , ns=0)
       end select
    end function saturation_pressure
 
@@ -214,7 +214,7 @@ contains
          do while (abs(step) > 0.25*T .or. T - step < 0)
             step = step/2
          end do
-
+         
          t = t - step
 
          if (abs(step) < tol .and. abs(f) < tol) exit
@@ -224,15 +224,15 @@ contains
        case("bubble")
          saturation_temperature = EquilibriumState(kind="bubble", &
             iters=its, y=y, x=z, vx=vz, vy=vy, t=t, p=p, beta=0._pr&
-            )
+            , ns=0)
        case("dew")
          saturation_temperature = EquilibriumState(kind="dew", &
             iters=its, x=y, y=z, vy=vz, vx=vy, t=t, p=p, beta=1._pr&
-            )
+            ,ns = 0)
        case("liquid-liquid")
          saturation_temperature = EquilibriumState(kind="liquid-liquid", &
             iters=its, y=y, x=z, vx=vz, vy=vy, t=t, p=p, beta=0._pr&
-            )
+            ,ns = 0)
       end select
    end function saturation_temperature
 end module yaeos__equilibria_saturation_points
