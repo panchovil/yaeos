@@ -384,7 +384,10 @@ contains
       integer, allocatable :: cps(:)
       integer :: cp
       integer :: i, nc
-
+      character(len=16) :: cadenaT, cadenaP
+  
+      write(cadenaT,"(A16)")  "T,"
+      write(cadenaP,"(A16)")  "P,"
 
       if (size(pt2%points) == 0) return
       allocate(cps(0))
@@ -396,16 +399,17 @@ contains
          cps = [cps, cp]
       end do
 
-      write(unit,  "(A, /, /)", iostat=iostat) "#PTEnvel2"
+      ! write(unit,  "(A, /, /)", iostat=iostat) "#PTEnvel2"
 
-      write(unit, "(A, /)") "#" // pt2%points(1)%kind
+      ! write(unit, "(A, /)") "#" // pt2%points(1)%kind
+      write(unit, "(A, /)")  cadenaT // cadenaP
 
       do i=1, size(pt2%points)-1
          ! Change label if passed a critical point
-         if (any(cps - i == 0) .and. i < size(pt2%points)) then
-            write(unit, "(/, /)")
-            write(unit, "(A, /)") "#" // pt2%points(i+1)%kind
-         end if
+         ! if (any(cps - i == 0) .and. i < size(pt2%points)) then
+         !    write(unit, "(/, /)")
+         !    write(unit, "(A, /)") "#" // pt2%points(i+1)%kind
+         ! end if
 
          write(unit, *) pt2%points(i)
          write(unit, "(/)")

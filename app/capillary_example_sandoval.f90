@@ -72,7 +72,7 @@ program capillary_example_sandoval
     write(*,*) "-----------------Nano------------------------"
 
     nano_envelope = nano_pt_envelope_2ph(model, z, r_poro, ang_cont,&
-                    Parachor, init_point, points=3000)
+                    Parachor, init_point, points=10000)
 
     write(2,*) nano_envelope
     ! write(*,*) "iteraciones Nano ",nano_envelope%points(1)%iters

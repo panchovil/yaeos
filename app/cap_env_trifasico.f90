@@ -69,7 +69,7 @@ program ejemplo_gera
     init_point%beta=sat_point%beta
 
     nano_envelope = nano_pt_envelope_2ph(model, z, r_poro, ang_cont,&
-                     Parachor, init_point, points=2000, iterations=500)
+                     Parachor, init_point, points=2000, iterations=1000)
     write(2,*) nano_envelope
     write(*,*) "-----------------Nano------------------------"
     write(*,*) "iteraciones Nano ",nano_envelope%points(1)%iters

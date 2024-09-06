@@ -121,7 +121,7 @@ contains
 
       integer :: i, newton_its
 
-      integer :: max_iters = 500
+      integer :: max_iters = 1000
 
       X = X0
       ns = ns0
@@ -213,11 +213,11 @@ contains
 
          dX = solve_system(dF, -F)
          ! Fix the step
-         ! if(point==1)then
-         !    do while(maxval(abs(dx)) > first_tol)
-         !       dX = dX/2
-         !    end do
-         ! else
+         if(point==1)then
+            do while(maxval(abs(dx)) > 5.0_pr)
+               dX = dX/2
+            end do
+         else
             do while(maxval(abs(dx)) > 0.08)
                dX = dX/2
             end do
@@ -226,9 +226,10 @@ contains
             !    ! near critical point) --> Reduce it
             !    dX = dX/2
             ! endif
-         ! end if
+         end if
 
          X = X + dX
+         !write(4,*) iters
       end do newton
 
    end subroutine full_newton
