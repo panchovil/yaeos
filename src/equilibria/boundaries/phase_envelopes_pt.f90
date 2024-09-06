@@ -107,6 +107,41 @@ contains
       S0 = X(ns)
 
       allocate(envelopes%points(0), envelopes%cps(0))
+
+      ! ========================================================================
+      ! Test of the jacobian with numerical derivates
+      ! ------------------------------------------------------------------------
+
+      test_numdiff: block
+         real(pr) :: F(size(X)), df(size(X), size(X)), numdiff(size(X), size(X))
+         real(pr) :: FdX(size(X)), dx(size(X)), dFdS(size(X))
+         real(pr) :: FdX2(size(X))
+         integer :: i
+         integer :: loc(2)
+         real(pr) :: maxerr
+
+         do i=1,size(X)
+            dx = 0
+            dx(i) = 1.e-3_pr * X(i)
+            call foo(X - dx, ns, S0, FdX, df, dFdS)
+            call foo(X + dx, ns, S0, FdX2, df, dFdS)
+            call foo(X, ns, S0, F, df, dFdS)
+            numdiff(:, i) = (FdX2 - FdX)/(2*dx(i))
+         end do
+
+         loc = maxloc(abs(numdiff - df))
+         maxerr = abs(&
+            (numdiff(loc(1), loc(2)) - df(loc(1), loc(2))&
+            )/numdiff(loc(1), loc(2)))
+         if (maxerr > 0.01_pr) then
+            print *, "ERROR: PXEnvel2 Numerical differentiation failed"
+            loc = maxloc(abs(numdiff - df))
+            print *, loc
+            print *, df(loc(1), loc(2)), numdiff(loc(1), loc(2))
+            ! error stop 1
+         end if
+      end block test_numdiff
+
       ! ========================================================================
       ! Trace the line using the continuation method.
       ! ------------------------------------------------------------------------

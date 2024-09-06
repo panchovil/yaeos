@@ -102,12 +102,12 @@ contains
         select case(first_point%kind)
         case("bubble", "liquid-liquid")
         X(:nc) = log(first_point%y/z)
-        !X(nc+2) = first_point%Px
-        !X(nc+3) = first_point%Py
+        ! X(nc+2) = first_point%Px
+        ! X(nc+3) = first_point%Py
         case("dew")
         X(:nc) = log(first_point%x/z)
-        !X(nc+2) = first_point%Py
-        !X(nc+3) = first_point%Px
+        ! X(nc+2) = first_point%Py
+        ! X(nc+3) = first_point%Px
         end select
 
         X(nc+2) = first_point%Px
@@ -117,6 +117,44 @@ contains
         S0 = X(ns)
 
         allocate(nano_envelopes%points(0), nano_envelopes%cps(0))
+
+        ! ========================================================================
+        ! Test of the jacobian with numerical derivates
+        ! ------------------------------------------------------------------------
+
+        test_numdiff: block
+            real(pr) :: F(size(X)), df(size(X), size(X)), numdiff(size(X), size(X))
+            real(pr) :: FdX(size(X)), dx(size(X)), dFdS(size(X))
+            real(pr) :: FdX2(size(X))
+            integer :: i
+            integer :: loc(2)
+            real(pr) :: maxerr
+
+            do i=1,size(X)
+                dx = 0
+                dx(i) = 1.e-3_pr * X(i)
+                call foo(X - dx, ns, S0, FdX, df, dFdS)
+                call foo(X + dx, ns, S0, FdX2, df, dFdS)
+                call foo(X, ns, S0, F, df, dFdS)
+                numdiff(:, i) = (FdX2 - FdX)/(2*dx(i))
+            end do
+
+            loc = maxloc(abs(numdiff - df))
+            maxerr = abs(&
+                (numdiff(loc(1), loc(2)) - df(loc(1), loc(2))&
+                )/numdiff(loc(1), loc(2)))
+            if (maxerr > 0.01_pr) then
+                print *, "ERROR: NanoPTEnvel2 Numerical differentiation failed"
+                loc = maxloc(abs(numdiff - df))
+                print *, loc
+                print *, df(loc(1), loc(2)), numdiff(loc(1), loc(2))
+                
+                ! error stop 1
+            end if
+        end block test_numdiff
+
+
+
         ! ========================================================================
         ! Trace the line using the continuation method.
         ! ------------------------------------------------------------------------
@@ -137,13 +175,12 @@ contains
             integer :: i
             !! Par [cm^3/mol * (mN/m)^1/4], r_poro [m], ang_cont [rad]
             !! IFT [(mN/m)^1/4]
-            !do i=1,nc
-            !    IFT_out=IFT_out+((Par(i)/1000.0)*(z(i)/Vz-y_in(i)/Vy))
-            !end do
+
             IFT_out = sum((Par/1E3)*(z_in/Vz_in-y_in/Vy_in))
             !! Pcap [bar]
             Pcap_out = (1E-8*2._pr*(IFT_out**4)*cos(ang_cont))/r_poro !E=4
         end subroutine Laplace
+        
         
         subroutine foo(X, ns, S, F, dF, dFdS)   
             !! Function that needs to be solved at each envelope point
@@ -170,10 +207,10 @@ contains
             !! Capilar Preasure variables
             !real(pr), intent(in) :: IFT, r_poro, ang_cont, Pcap, Par(nc) 
             real(pr) :: dPdV_y, dPdV_z, dVdT_y, dVdT_z
-            real(pr) :: dVdn_y(nc)
+            real(pr) :: dVdn_y(nc), dPdn_y(nc), dVdn_z(nc), dPdn_z(nc)
         
             !! Capilar jacobian intermediate variables
-            real(pr) :: var_dFn2, var_dFn2_dK, var_dFn2_dT, var_dFn2_dPz, var_dFn2_dPy
+            real(pr) :: var_dFn2, var_dFn2_dK(nc), var_dFn2_dT, var_dFn2_dPliq, var_dFn2_dPvap
 
             F = 0
             dF = 0
@@ -183,10 +220,15 @@ contains
 
             K = exp(X(:nc))
             T = exp(X(nc+1))
-            Pz = X(nc+2)
-            Py = X(nc+3)
-
-
+            if (kind == "dew") then
+                Pz = X(nc+3)
+                Py = X(nc+2)
+            else
+                Pz = X(nc+2)
+                Py = X(nc+3)
+            end if
+            ! Pz = X(nc+2)
+            ! Py = X(nc+3)
             y = K*z
             select case(kind)
             case ("bubble")
@@ -211,13 +253,97 @@ contains
                 z, Pz, T, V=Vz, root_type=kind_z, &
                 lnFug=lnFug_z, dlnPhidt=dlnphi_dt_z, &
                 dlnPhidp=dlnphi_dp_z, dlnphidn=dlnphi_dn_z, &
-                dPdV=dPdV_z, dVdT=dVdT_z)
+                dPdV=dPdV_z, dVdT=dVdT_z, dVdn=dVdn_z, dPdn=dPdn_z)
             call model%lnphi_pt(&
                 y, Py, T, V=Vy, root_type=kind_y, &
                 lnFug=lnFug_y, dlnPhidt=dlnphi_dt_y, &
                 dlnPhidp=dlnphi_dp_y, dlnphidn=dlnphi_dn_y, &
-                dPdV=dPdV_y, dVdT=dVdT_y, dVdn=dVdn_y)
+                dPdV=dPdV_y, dVdT=dVdT_y, dVdn=dVdn_y, dPdn=dPdn_y)
             
+            if (kind == "dew") then
+                call Laplace(y_in=z, z_in=y, Vy_in=Vz, Vz_in=Vy, IFT_out=IFT, Pcap_out= Pcap)
+                F(:nc) = X(:nc) + lnFug_y - lnFug_z
+                F(nc + 1) = sum(y - z)
+                F(nc + 2) = Py - Pz + Pcap !Pliq-Pvap+Pcao
+                F(nc + 3) = X(ns) - S
+
+                
+                var_dFn2 = 1.0E-8*(8._pr*cos(ang_cont)/r_poro)*(IFT**3) !! 1.0E-11 is an unit conversion 
+                var_dFn2_dT = sum((Par/1E3)*((z*dVdT_z/(Vz**2))-(y*dVdT_y/(Vy**2))))
+                var_dFn2_dPliq = sum(-(Par/1E3)*y)
+                var_dFn2_dPvap = sum((Par/1E3)*z)
+
+
+                do i=1,nc
+                    var_dFn2_dK(i)=(Par(i)/1E3)*((y(i)*dVdn_y(i)/(Vy**2))-(1._pr/Vy))
+                    do j=1,nc
+                        if (j/=i) then
+                            var_dFn2_dK(i)=var_dFn2_dK(i)+(Par(j)/1E3)*(y(j)*dVdn_y(i)/(Vy**2))
+                        end if
+                    end do
+                end do
+
+                !! Jacobian Matrix
+                do j=1,nc
+                    df(:nc, j) = dlnphi_dn_y(:, j) * y(j)
+                    df(j, j) = dF(j, j) + 1._pr
+                end do
+                df(:nc, nc + 1) = T * (dlnphi_dt_y - dlnphi_dt_z)
+                df(:nc, nc + 2) = (-(1._pr/Py) - (dlnphi_dp_y))*(-1)
+                df(:nc, nc + 3) = ((1._pr/Pz) + (dlnphi_dp_z))*(-1)
+                df(nc + 1, :nc) = y
+                do j=1,nc
+                    df(nc + 2, j) = y(j)*((var_dFn2*var_dFn2_dK(j)))*(-1)
+                end do
+                df(nc + 2, nc + 1) = var_dFn2*T*var_dFn2_dT
+                df(nc + 2, nc + 2) = 1._pr + var_dFn2*var_dFn2_dPliq*(1._pr/(dPdV_y*(Vy**2))) 
+                df(nc + 2, nc + 3) = - 1._pr + var_dFn2*var_dFn2_dPvap*(1._pr/(dPdV_z*(Vz**2)))
+                df(nc + 3, :) = 0._pr
+                df(nc + 3, ns) = 1._pr
+
+            else    
+                call Laplace(y_in=y, z_in=z, Vy_in=Vy, Vz_in=Vz, IFT_out=IFT, Pcap_out= Pcap)
+
+                F(:nc) = X(:nc) + lnFug_y - lnFug_z
+                F(nc + 1) = sum(y - z)
+                F(nc + 2) = Pz - Py + Pcap !Pliq-Pvap+Pcao
+                F(nc + 3) = X(ns) - S
+                
+                var_dFn2 = 1.0E-8*(8._pr*cos(ang_cont)/r_poro)*(IFT**3) !! 1.0E-11 is an unit conversion 
+                var_dFn2_dT = sum((Par/1E3)*((y*dVdT_y/(Vy**2))-(z*dVdT_z/(Vz**2))))
+                !var_dFn2_dK = (Par/1E3)*((y*dVdn_y/(Vy**2))-(1._pr/Vy))
+                !var_dFn2_dK = sum(Par/1E3*((y*dVdn_y/(Vy**2))-(1._pr/Vy)))
+                var_dFn2_dPliq = sum(-(Par/1E3)*z)
+                var_dFn2_dPvap = sum((Par/1E3)*y)
+
+                do i=1,nc
+                    var_dFn2_dK(i)=(Par(i)/1E3)*((y(i)*dVdn_y(i)/(Vy**2))-(1._pr/Vy))
+                    do j=1,nc
+                        if (j/=i) then
+                            var_dFn2_dK(i)=var_dFn2_dK(i)+(Par(j)/1E3)*(y(j)*dVdn_y(i)/(Vy**2))
+                        end if
+                    end do
+                end do
+                !! Jacobian Matrix
+                do j=1,nc
+                    df(:nc, j) = dlnphi_dn_y(:, j) * y(j)
+                    df(j, j) = dF(j, j) + 1._pr
+                end do
+                df(:nc, nc + 1) = T * (dlnphi_dt_y - dlnphi_dt_z)
+                df(:nc, nc + 2) = -(1._pr/Pz) - (dlnphi_dp_z)
+                df(:nc, nc + 3) = (1._pr/Py) + (dlnphi_dp_y)
+                df(nc + 1, :nc) = y
+                do j=1,nc
+                    df(nc + 2, j) = y(j)*((var_dFn2*var_dFn2_dK(j)))
+                end do
+                df(nc + 2, nc + 1) = var_dFn2*T*var_dFn2_dT
+                df(nc + 2, nc + 2) = 1._pr + var_dFn2*var_dFn2_dPliq*(1._pr/(dPdV_z*(Vz**2))) 
+                df(nc + 2, nc + 3) = - 1._pr + var_dFn2*var_dFn2_dPvap*(1._pr/(dPdV_y*(Vy**2)))
+                df(nc + 3, :) = 0._pr
+                df(nc + 3, ns) = 1._pr
+
+            endif
+
             ! if (kind == "dew") then
             !     call Laplace(y_in=z, z_in=y, Vy_in=Vz, Vz_in=Vy, IFT_out=IFT, Pcap_out= Pcap)
             !     !Cuando es curva dew lo que representa las variables se invierte
@@ -230,17 +356,43 @@ contains
             !     var_dFn2 = 1.0E-11*(8._pr*cos(ang_cont)/r_poro)*(IFT**3) !! 1.0E-11 is an unit conversion //corregida
             !     var_dFn2_dK = sum(Par*((1._pr/Vy)-(y*dVdn_y/(Vy**2)))) !! corregida
             !     var_dFn2_dT = sum(Par*((z*dVdT_z/(Vz**2))-(y*dVdT_y/(Vy**2)))) !!corregida
-            !     var_dFn2_dPliq = sum(-Par*y)
-            !     var_dFn2_dPvap = sum(Par*z)
+            !     !var_dFn2_dPy = sum(-Par*y)
+            !     !var_dFn2_dPz = sum(Par*z)
+            !     var_dFn2_dPy = sum(-Par*y)
+            !     var_dFn2_dPz = sum(Par*z)
+            ! !     !write(4,*) Py, Pz, Pcap
 
-            !     !write(4,*) Py, Pz, Pcap
+            ! !     F(:nc) = X(:nc) + lnFug_y - lnFug_z !como se toma la inversa de K(osea x/y), va a hacer que el ln cambie el signo por lo tanto la ec queda igual
+            ! !     F(nc + 1) = sum(y - z)
+            ! !     F(nc + 2) = Py - Pz + Pcap !Pliq-Pvap+Pcao
+            ! !     F(nc + 3) = X(ns) - S
 
-            !     F(:nc) = X(:nc) + lnFug_y - lnFug_z !como se toma la inversa de K(osea x/y), va a hacer que el ln cambie el signo por lo tanto la ec queda igual
+            ! !     do j=1,nc
+            ! !         df(:nc, j) = dlnphi_dn_y(:, j) * y(j)
+            ! !         df(j, j) = dF(j, j) + 1._pr
+            ! !     end do
+    
+            ! !     df(:nc, nc + 1) = T * (dlnphi_dt_y - dlnphi_dt_z)
+            ! !     df(:nc, nc + 2) = -(1._pr/Py) - (dlnphi_dp_y)
+            ! !     df(:nc, nc + 3) = (1._pr/Pz) + (dlnphi_dp_z)
+          
+            ! !     df(nc + 1, :nc) = y
+                
+            ! !     df(nc + 2, :nc) = y*var_dFn2*var_dFn2_dK
+            ! !     df(nc + 2, nc + 1) = var_dFn2*T*var_dFn2_dT
+            ! !     df(nc + 2, nc + 2) = 1._pr + var_dFn2*var_dFn2_dPy*(1._pr/(dPdV_y*(Vy**2))) 
+            ! !     df(nc + 2, nc + 3) = - 1._pr + var_dFn2*var_dFn2_dPz*(1._pr/(dPdV_z*(Vz**2)))
+            !     F(:nc) = X(:nc) + lnFug_y - lnFug_z
             !     F(nc + 1) = sum(y - z)
             !     F(nc + 2) = Py - Pz + Pcap !Pliq-Pvap+Pcao
             !     F(nc + 3) = X(ns) - S
+            !     !
+            !     !if (kind=="dew") write(4,*) Pcap, Py, Pz, T
+            !     !! Jacobian intermediate variables
+    
             !     write(4,*) F
 
+            !     !! Jacobian Matrix
             !     do j=1,nc
             !         df(:nc, j) = dlnphi_dn_y(:, j) * y(j)
             !         df(j, j) = dF(j, j) + 1._pr
@@ -254,51 +406,58 @@ contains
                 
             !     df(nc + 2, :nc) = y*var_dFn2*var_dFn2_dK
             !     df(nc + 2, nc + 1) = var_dFn2*T*var_dFn2_dT
-            !     df(nc + 2, nc + 2) = 1._pr + var_dFn2*var_dFn2_dPliq*(1._pr/(dPdV_y*(Vy**2))) 
-            !     df(nc + 2, nc + 3) = - 1._pr + var_dFn2*var_dFn2_dPvap*(1._pr/(dPdV_z*(Vz**2)))
-
+            !     df(nc + 2, nc + 2) = 1._pr + var_dFn2*var_dFn2_dPy*(1._pr/(dPdV_y*(Vy**2))) 
+            !     df(nc + 2, nc + 3) = - 1._pr + var_dFn2*var_dFn2_dPz*(1._pr/(dPdV_z*(Vz**2)))
             ! else 
-                call Laplace(y_in=y, z_in=z, Vy_in=Vy, Vz_in=Vz, IFT_out=IFT, Pcap_out= Pcap)
+                !call Laplace(y_in=y, z_in=z, Vy_in=Vy, Vz_in=Vz, IFT_out=IFT, Pcap_out= Pcap)
 
-                var_dFn2 = 1.0E-11*(8._pr*cos(ang_cont)/r_poro)*(IFT**3) !! 1.0E-11 is an unit conversion 
-                var_dFn2_dK = sum(Par*((y*dVdn_y/(Vy**2))-(1._pr/Vy))) 
-                var_dFn2_dT = sum(Par*((y*dVdT_y/(Vy**2))-(z*dVdT_z/(Vz**2))))
-                var_dFn2_dPy = sum(-Par*z)
-                var_dFn2_dPz = sum(Par*y)
+            !     var_dFn2 = 1.0E-11*(8._pr*cos(ang_cont)/r_poro)*(IFT**3) !! 1.0E-11 is an unit conversion 
+            !     var_dFn2_dK = sum(Par*((y*dVdn_y/(Vy**2))-(1._pr/Vy))) 
+            !     var_dFn2_dT = sum(Par*((y*dVdT_y/(Vy**2))-(z*dVdT_z/(Vz**2))))
+            !     var_dFn2_dPz = sum(-Par*z)
+            !     var_dFn2_dPy = sum(Par*y)
 
 
-                F(:nc) = X(:nc) + lnFug_y - lnFug_z
-                F(nc + 1) = sum(y - z)
-                F(nc + 2) = Pz - Py + Pcap !Pliq-Pvap+Pcao
-                F(nc + 3) = X(ns) - S
-                !
-                !if (kind=="dew") write(4,*) F
-                !! Jacobian intermediate variables
+            !     F(:nc) = X(:nc) + lnFug_y - lnFug_z
+            !     F(nc + 1) = sum(y - z)
+            !     F(nc + 2) = Pz - Py + Pcap !Pliq-Pvap+Pcao
+            !     F(nc + 3) = X(ns) - S
+            !     !
+            !     !if (kind=="dew") write(4,*) Pcap, Py, Pz, T
+            !     !! Jacobian intermediate variables
     
     
-                !! Jacobian Matrix
-                do j=1,nc
-                    df(:nc, j) = dlnphi_dn_y(:, j) * y(j)
-                    df(j, j) = dF(j, j) + 1._pr
-                end do
+            !     !! Jacobian Matrix
+            !     do j=1,nc
+            !         df(:nc, j) = dlnphi_dn_y(:, j) * y(j)
+            !         df(j, j) = dF(j, j) + 1._pr
+            !     end do
     
-                df(:nc, nc + 1) = T * (dlnphi_dt_y - dlnphi_dt_z)
-                df(:nc, nc + 2) = -(1._pr/Pz) - (dlnphi_dp_z)
-                df(:nc, nc + 3) = (1._pr/Py) + (dlnphi_dp_y)
+            !     df(:nc, nc + 1) = T * (dlnphi_dt_y - dlnphi_dt_z)
+            !     df(:nc, nc + 2) = -(1._pr/Pz) - (dlnphi_dp_z)
+            !     df(:nc, nc + 3) = (1._pr/Py) + (dlnphi_dp_y)
           
-                df(nc + 1, :nc) = y
+            !     df(nc + 1, :nc) = y
                 
-                df(nc + 2, :nc) = y*var_dFn2*var_dFn2_dK
-                df(nc + 2, nc + 1) = var_dFn2*T*var_dFn2_dT
-                df(nc + 2, nc + 2) = 1._pr + var_dFn2*var_dFn2_dPy*(1._pr/(dPdV_z*(Vz**2))) 
-                df(nc + 2, nc + 3) = - 1._pr + var_dFn2*var_dFn2_dPz*(1._pr/(dPdV_y*(Vy**2)))
+            !     df(nc + 2, :nc) = y*var_dFn2*var_dFn2_dK
+            !     df(nc + 2, nc + 1) = var_dFn2*T*var_dFn2_dT
+            !     df(nc + 2, nc + 2) = 1._pr + var_dFn2*var_dFn2_dPz*(1._pr/(dPdV_z*(Vz**2))) 
+            !     df(nc + 2, nc + 3) = - 1._pr + var_dFn2*var_dFn2_dPy*(1._pr/(dPdV_y*(Vy**2)))
             ! end if                 
+            ! call Laplace(y_in=y, z_in=z, Vy_in=Vy, Vz_in=Vz, IFT_out=IFT, Pcap_out= Pcap)
+            ! !! Jacobian intermediate variables
 
 
 
-    
-            df(nc + 3, :) = 0._pr
-            df(nc + 3, ns) = 1._pr
+
+           ! F(nc + 2) = Pz - Py + Pcap !Pliq-Pvap+Pcao
+
+
+            !if (kind=="dew") write(4,*) F
+            !if (kind=="bubble") write(3,*) F
+
+
+
 
             dFdS = 0._pr
             dFdS(nc + 3) = -1._pr

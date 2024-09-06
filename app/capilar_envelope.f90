@@ -84,7 +84,7 @@ program capilar_envelope
 
     !! -------------------------- DEW ENVELOPE ---------------------------
 
-    sat_point = saturation_temperature(model, z, P=0.5_pr, kind="dew", t0=200._pr)
+    sat_point = saturation_temperature(model, z, P=20._pr, kind="dew", t0=1200._pr)
     !sat_point = saturation_pressure(model, z, P0=0.5_pr, kind="dew", t=300._pr)
 
 

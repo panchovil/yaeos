@@ -212,13 +212,12 @@ contains
          if (maxval(abs(F)) < solve_tol) exit
 
          dX = solve_system(dF, -F)
-         !write(4,*) maxval(abs(F))
          ! Fix the step
-         if(point==1)then
-            do while(maxval(abs(dx)) > first_tol)
-               dX = dX/2
-            end do
-         else
+         ! if(point==1)then
+         !    do while(maxval(abs(dx)) > first_tol)
+         !       dX = dX/2
+         !    end do
+         ! else
             do while(maxval(abs(dx)) > 0.08)
                dX = dX/2
             end do
@@ -227,7 +226,7 @@ contains
             !    ! near critical point) --> Reduce it
             !    dX = dX/2
             ! endif
-         end if
+         ! end if
 
          X = X + dX
       end do newton
