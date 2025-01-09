@@ -27,6 +27,7 @@ module yaeos__models_ar_cubic_quadratic_mixing
         procedure :: Dmix !! Attractive parameter mixing rule
         procedure :: Bmix !! Repulsive parameter mixing rule
         procedure :: D1mix => D1mix_constant
+!        procedure :: alpha_ads_mix => alpha_ads_mix_linear
     end type QMR
     type, extends(QMR) :: QMR_RKPR
     contains
@@ -46,7 +47,6 @@ module yaeos__models_ar_cubic_quadratic_mixing
             real(pr), intent(out):: aij(:, :), daijdt(:, :), daijdt2(:, :)
         end subroutine get_aij
     end interface
-
 contains
 
     subroutine Dmix(self, n, T, &
@@ -232,4 +232,35 @@ contains
             end do
         end do
     end subroutine kij_constant
+    ! subroutine alpha_ads_mix_linear(n, alpha_ads_i, alpha_ads_mix, dalpha_ads_mixi, dalpha_ads_mixij)
+    !     real(pr), intent(in) :: n(:)
+    !     real(pr), intent(in) :: alpha_ads_i(:)
+    !     real(pr), intent(out) :: alpha_ads_mix, dalpha_ads_mixi(:), dalpha_ads_mixij(:, :)
+
+    !     !real(pr) :: bij(size(n), size(n))
+
+    !     real(pr) :: totn
+
+    !     integer :: i, j, nc
+
+    !     nc = size(n)
+    !     TOTN = sum(n)
+
+    !     alpha_ads_mix = 0
+    !     dalpha_ads_mixi = 0
+    !     dalpha_ads_mixij = 0
+
+    !     alpha_ads_mix = sum(n*alpha_ads_i)
+    !     alpha_ads_mix = alpha_ads_mix/TOTN
+
+    !     do i = 1,nc
+    !         dalpha_ads_mixi(i) = (alpha_ads_i(i) - alpha_ads_mix)/TOTN
+    !     end do
+        
+    !     do i = 1, nc
+    !         do j = 1, nc
+    !             dalpha_ads_mixij(i, j) = (-dalpha_ads_mixi(i)-dalpha_ads_mixi(j))/TOTN
+    !         end do
+    !     end do
+    ! end subroutine
 end module yaeos__models_ar_cubic_quadratic_mixing

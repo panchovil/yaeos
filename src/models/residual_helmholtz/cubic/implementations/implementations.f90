@@ -2,6 +2,7 @@ module yaeos__models_ar_cubic_implementations
    use yaeos__constants, only: pr, R
    use  yaeos__models_ar_genericcubic, only: CubicEoS
    use yaeos__substance, only: Substances
+   use yaeos__models_ar_nanocubic
    !! Implemented Cubic Equations of State.
    !!
    !! - PengRobinson76
@@ -15,8 +16,71 @@ module yaeos__models_ar_cubic_implementations
    public :: PengRobinson78
    public :: SoaveRedlichKwong
    public :: RKPR
+   public :: PengRobinson78Nano
 
 contains
+
+    type(CubicEoSNano) function PengRobinson78Nano(LJ_par, rp, tc, pc, w, kij, lij) result(model)
+        !! PengRobinson78.
+
+        use yaeos__constants, only: pr, R
+        use yaeos__substance, only: Substances
+        use yaeos__models_ar_nanocubic, only: CubicEoSNano, CubicMixRuleNano
+        use yaeos__models_ar_cubic_alphas, only: AlphaSoave
+
+        !use yaeos__models_ar_cubic_quadratic_mixing, only: QMR
+        real(pr), intent(in) :: tc(:) !! Critical Temperatures [K]
+        real(pr), intent(in) :: pc(:) !! Critical Pressures [bar]
+        real(pr), intent(in) :: w(:) !! Acentric Factors
+        real(pr), optional, intent(in) :: kij(:, :) !! \(k_{ij}\) matrix
+        real(pr), optional, intent(in) :: lij(:, :) !! \(l_{ij}\) matrix
+        real(pr), intent(in) :: LJ_par(:) !! Lennard-Jones Parameters
+        real(pr), intent(in) :: rp !! pore radius
+
+        type(Substances) :: composition
+        !type(CubicMixRule) :: mixrule
+        type(CubicMixRuleNano) :: mixrule
+        type(AlphaSoave) :: alpha
+        integer :: nc
+        integer :: i
+
+        nc = size(tc)
+        composition%tc = tc
+        composition%pc = pc
+        composition%w = w
+
+        allocate(alpha%k(nc))
+        where (composition%w <=0.491)
+            alpha%k = 0.37464 + 1.54226 * composition%w - 0.26992 * composition%w**2
+        elsewhere
+            alpha%k = 0.379642 + 1.48503 * composition%w - 0.164423 * composition%w**2 + 0.016666 * composition%w**3
+        end where
+        
+
+        if (present(kij)) then
+            mixrule%k = kij
+        else
+            mixrule%k = reshape([(0, i=1,nc**2)], [nc, nc])
+        endif
+
+        if (present(lij)) then
+            mixrule%l = lij
+        else
+            mixrule%l = reshape([(0, i=1,nc**2)], [nc, nc])
+        endif
+
+        model%components = composition
+        model%alpha_ads_i = (1-(0.7597_pr*((rp/LJ_par)**-0.7708_pr)))/(1-(0.9793_pr*((rp/LJ_par)**-0.6366_pr)))
+        model%ac = 0.45723553_pr * R**2 * (composition%tc**2 / composition%pc) * &
+        (1-(0.7597_pr*((rp/LJ_par)**-0.7708_pr)))**2/(1-(0.9793_pr*((rp/LJ_par)**-0.6366_pr)))
+        model%b = 0.07779607_pr * R * composition%tc/(composition%pc * model%alpha_ads_i)
+        model%del1 = [(1 + sqrt(2.0_pr), i=1,nc)]
+        model%del2 = [(1 - sqrt(2.0_pr), i=1,nc)]
+        model%alpha = alpha
+        model%mixrule = mixrule
+        model%name = "PR78_Nano"
+    
+    end function
 
     type(CubicEoS) function PengRobinson76(tc, pc, w, kij, lij) result(model)
         !! PengRobinson76.
@@ -54,7 +118,6 @@ contains
         type(AlphaSoave) :: alpha
         integer :: nc
         integer :: i
-
         nc = size(tc)
         
         composition%tc = tc
@@ -76,7 +139,6 @@ contains
         else
             mixrule%l = reshape([(0, i=1,nc**2)], [nc, nc])
         endif
-
         model%components = composition
         model%ac = 0.45723553_pr * R**2 * composition%tc**2 / composition%pc
         model%b = 0.07779607_pr * R * composition%tc/composition%pc

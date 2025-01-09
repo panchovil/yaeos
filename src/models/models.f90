@@ -47,4 +47,7 @@ module yaeos__models
    ! Implemented models
    use yaeos__models_ge_implementations
 
+   ! Modified Residual Helmholtz models
+   use yaeos__models_ar_nanocubic
+
 end module

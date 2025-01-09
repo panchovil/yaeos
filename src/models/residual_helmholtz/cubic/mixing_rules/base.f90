@@ -22,6 +22,7 @@ module yaeos__models_ar_cubic_mixing_base
     implicit none
 contains
 
+
     pure subroutine bmix_linear(n, bi, b, dbi, dbij)
         real(pr), intent(in) :: n(:)
         real(pr), intent(in) :: bi(:)
