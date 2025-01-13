@@ -49,8 +49,9 @@ module yaeos__models_ar
    contains
       procedure(abs_residual_helmholtz), deferred :: residual_helmholtz
       procedure(abs_volume_initializer), deferred :: get_v0
-      procedure :: lnphi_vt => fugacity_vt
-      procedure :: lnphi_pt => fugacity_pt
+      procedure :: lnphi_vt
+      procedure :: lnphi_pt
+      procedure :: lnfug_vt
       procedure :: pressure
       procedure :: volume
       procedure :: enthalpy_residual_vt
@@ -58,6 +59,7 @@ module yaeos__models_ar
       procedure :: entropy_residual_vt
       procedure :: Cv_residual_vt
       procedure :: Cp_residual_vt
+      procedure :: Psat_pure
    end type ArModel
 
    interface size
@@ -249,7 +251,7 @@ contains
       if (present(dPdn)) dPdn(:) = R*T/V - ArVn(:)
    end subroutine pressure
 
-   subroutine fugacity_pt(eos, &
+   subroutine lnphi_pt(eos, &
       n, P, T, V, root_type, lnPhi, dlnPhidP, dlnPhidT, dlnPhidn, dPdV, dPdT, dPdn, &
       lnFug, dVdT, dVdn)
       !! Calculate logarithm of fugacity, given pressure and temperature.
@@ -291,26 +293,21 @@ contains
       if(abs(P_in - P) > 1e-2) then
          write(error_unit, *) "WARN: possible bad root solving: ", P_in, P
       end if
-   end subroutine fugacity_pt
+   end subroutine lnphi_pt
 
-   subroutine fugacity_vt(eos, &
-      n, V, T, P, lnPhi, dlnPhidP, dlnPhidT, dlnPhidn, dPdV, dPdT, dPdn, &
+   subroutine lnphi_vt(eos, &
+      n, V, T, P, lnPhi, &
+      dlnPhidP, dlnPhidT, dlnPhidn, &
+      dPdV, dPdT, dPdn, &
       lnFug, dVdT, dVdn)
       !! Calculate fugacity coefficent given volume and temperature.
-      !!
-      !!@note
-      !!While the natural output variable is \(ln \phi_i P\). The calculated
-      !!derivatives will be the derivatives of the fugacity coefficient
-      !!\(ln \phi_i\)
-      !!@endnote
-      !!
       class(ArModel) :: eos !! Model
       real(pr), intent(in) :: n(:) !! Mixture mole numbers
       real(pr), intent(in) :: V !! Volume [L]
       real(pr), intent(in) :: T !! Temperature [K]
 
       real(pr), optional, intent(out) :: P !! Pressure [bar]
-      real(pr), optional, intent(out) :: lnPhi(size(n)) !! \(\ln(\phi_i*P)\) vector
+      real(pr), optional, intent(out) :: lnPhi(size(n)) !! \(\ln(\phi_i)\) vector
       real(pr), optional, intent(out) :: dlnPhidT(size(n)) !! \(ln(phi_i)\) Temp derivative
       real(pr), optional, intent(out) :: dlnPhidP(size(n)) !! \(ln(phi_i)\) Presssure derivative
       real(pr), optional, intent(out) :: dlnPhidn(size(n), size(n)) !! \(ln(phi_i)\) compositional derivative
@@ -342,12 +339,12 @@ contains
          present(dlnPhidn) &
          .or. present(dlnPhidP) &
          .or. present(dlnPhidT) &
-         .or. present(P) &
          )) then
          call eos%residual_helmholtz(n, v, t, Arn=Arn, ArV=ArV)
          P_in = totn*RT/V - ArV
          Z = P_in*V/(totn*RT)
          lnPhi(:) = Arn(:)/RT - log(Z)
+         if (present(P)) P = P_in
          return
       else if (present(dlnPhidn)) then
          call eos%residual_helmholtz(&
@@ -399,7 +396,117 @@ contains
       if (present(dVdT)) dVdT = dVdT_in
       if (present(dVdn)) dVdn = dVdn_in 
 
-   end subroutine fugacity_vt
+   end subroutine lnphi_vt
+
+   subroutine lnfug_vt(eos, &
+      n, V, T, P, lnf, &
+      dlnfdV, dlnfdT, dlnfdn, &
+      dPdV, dPdT, dPdn &
+      )
+      use yaeos__math, only: derivative_dxk_dni
+      !! Calculate fugacity coefficent given volume and temperature.
+      class(ArModel) :: eos !! Model
+      real(pr), intent(in) :: n(:) !! Mixture mole numbers
+      real(pr), intent(in) :: V !! Volume [L]
+      real(pr), intent(in) :: T !! Temperature [K]
+
+      real(pr), optional, intent(out) :: P !! Pressure [bar]
+      real(pr), optional, intent(out) :: lnf(size(n)) !! \(\ln(\f_i)\) vector
+      real(pr), optional, intent(out) :: dlnfdT(size(n)) !! \(ln(f_i)\) Temp derivative
+      real(pr), optional, intent(out) :: dlnfdV(size(n)) !! \(ln(f_i)\) Volume derivative
+      real(pr), optional, intent(out) :: dlnfdn(size(n), size(n)) !! \(ln(f_i)\) compositional derivative
+      real(pr), optional, intent(out) :: dPdV !! \(\frac{dP}{dV}\)
+      real(pr), optional, intent(out) :: dPdT !! \(\frac{dP}{dT}\)
+      real(pr), optional, intent(out) :: dPdn(:) !! \(\frac{dP}{dn_i}\)
+
+      real(pr) :: Ar, ArTV, ArV, ArV2
+
+      real(pr) :: lnPhi(size(n)) !! \(\ln(\phi_i)\) vector
+      real(pr) :: dlnPhidT(size(n)) !! \(ln(phi_i)\) Temp derivative
+      real(pr) :: dlnPhidP(size(n)) !! \(ln(phi_i)\) Presssure derivative
+      real(pr) :: dlnPhidn(size(n), size(n)) !! \(ln(phi_i)\) compositional derivative
+
+      real(pr) :: dxk_dni(size(n), size(n))
+
+      real(pr), dimension(size(n)) :: Arn, ArVn, ArTn
+      real(pr) :: Arn2(size(n), size(n))
+
+      real(pr) :: dPdV_in, dPdT_in, dPdn_in(size(n))
+      real(pr) :: P_in
+
+      real(pr) :: RT, Z
+
+      real(pr) :: totn
+      integer :: nc, i, j
+
+      totn = sum(n)
+      nc = size(n)
+
+      RT = R*T
+
+      if (present(lnf) .and. .not. (&
+         present(dlnfdn) &
+         .or. present(dlnfdV) &
+         .or. present(dlnfdT) &
+         )) then
+         call eos%residual_helmholtz(n, v, t, Arn=Arn, ArV=ArV)
+
+         P_in = totn*RT/V - ArV
+
+         where (n /= 0)
+            lnf = log(n/totn) + Arn/RT - log(V/(totn*RT))
+         endwhere
+
+         if (present(P)) P = P_in
+
+         return
+      else if (present(dlnfdn)) then
+         call eos%residual_helmholtz(&
+            n, V, T, Ar=Ar, ArV=ArV, ArV2=ArV2, ArTV=ArTV, &
+            Arn=Arn, ArVn=ArVn, ArTn=ArTn, Arn2=Arn2 &
+            )
+      else
+         call eos%residual_helmholtz(&
+            n, V, T, Ar=Ar, ArV=ArV, ArV2=ArV2, ArTV=ArTV, &
+            Arn=Arn, ArVn=ArVn, ArTn=ArTn &
+            )
+      end if
+
+      P_in = totn*RT/V - ArV
+      Z = P_in*V/(totn*RT)
+      if (present(P)) P = P_in
+
+      dPdV_in = -ArV2 - RT*totn/V**2
+      dPdT_in = -ArTV + totn*R/V
+      dPdn_in = RT/V - ArVn
+
+      if (present(lnf)) then
+         where (n /= 0)
+            lnf = log(n/totn) + Arn/RT - log(V/(totn*RT))
+         endwhere
+      end if
+
+      if (present(dlnfdV)) then
+         dlnfdV = -dPdn_in/RT
+      end if
+
+      if (present(dlnfdT)) then
+         dlnfdT = (ArTn - Arn/T)/RT + 1._pr/T
+      end if
+
+      if (present(dlnfdn)) then
+         do i = 1, nc
+            do j=1,nc
+               dlnfdn(i, j) = Arn2(i, j)/RT
+            end do
+            dlnfdn(i, i) = dlnfdn(i, i) + 1/n(i)
+         end do
+      end if
+
+      if (present(dPdV)) dPdV = dPdV_in
+      if (present(dPdT)) dPdT = dPdT_in
+      if (present(dPdn)) dPdn = dPdn_in
+   end subroutine lnfug_vt
 
    subroutine enthalpy_residual_vt(eos, n, V, T, Hr, HrT, HrV, Hrn)
       !! Calculate residual enthalpy given volume and temperature.
@@ -407,7 +514,7 @@ contains
       real(pr), intent(in) :: n(:) !! Moles number vector
       real(pr), intent(in) :: t !! Temperature [K]
       real(pr), intent(in) :: v !! Volume [L]
-      real(pr), intent(out) :: Hr !! Residual enthalpy [bar L / mol]
+      real(pr), intent(out) :: Hr !! Residual enthalpy [bar L]
       real(pr), optional, intent(out) :: HrT !! \(\frac{dH^r}}{dT}\)
       real(pr), optional, intent(out) :: HrV !! \(\frac{dH^r}}{dV}\)
       real(pr), optional, intent(out) :: Hrn(size(n)) !! \(\frac{dH^r}}{dn}\)
@@ -433,7 +540,7 @@ contains
       real(pr), intent(in) :: n(:) !! Moles number vector
       real(pr), intent(in) :: V !! Volume [L]
       real(pr), intent(in) :: T !! Temperature [K]
-      real(pr), intent(out) :: Gr !! Gibbs energy [bar L / mol]
+      real(pr), intent(out) :: Gr !! Gibbs energy [bar L]
       real(pr), optional, intent(out) :: GrT !! \(\frac{dG^r}}{dT}\)
       real(pr), optional, intent(out) :: GrV !! \(\frac{dG^r}}{dV}\)
       real(pr), optional, intent(out) :: Grn(size(n)) !! \(\frac{dG^r}}{dn}\)
@@ -460,7 +567,7 @@ contains
       real(pr), intent(in) :: n(:) !! Moles number vector
       real(pr), intent(in) :: V !! Volume [L]
       real(pr), intent(in) :: T !! Temperature [K]
-      real(pr), intent(out) :: Sr !! Entropy [bar L / K / mol]
+      real(pr), intent(out) :: Sr !! Entropy [bar L / K]
       real(pr), optional, intent(out) :: SrT !! \(\frac{dS^r}}{dT}\)
       real(pr), optional, intent(out) :: SrV !! \(\frac{dS^r}}{dV}\)
       real(pr), optional, intent(out) :: Srn(size(n)) !! \(\frac{dS^r}}{dn}\)
@@ -484,7 +591,7 @@ contains
       real(pr), intent(in) :: n(:) !! Moles number vector
       real(pr), intent(in) :: T !! Temperature [K]
       real(pr), intent(in) :: V !! Volume [L]
-      real(pr), intent(out) :: Cv !! heat capacity v constant [bar L / K / mol]
+      real(pr), intent(out) :: Cv !! heat capacity v constant [bar L / K]
 
       real(pr) :: Ar, ArT2
 
@@ -500,7 +607,7 @@ contains
       real(pr), intent(in) :: n(:) !! Moles number vector
       real(pr), intent(in) :: V !! Volume [L]
       real(pr), intent(in) :: T !! Temperature [K]
-      real(pr), intent(out) :: Cp !! heat capacity p constant [bar L / K / mol]
+      real(pr), intent(out) :: Cp !! heat capacity p constant [bar L / K]
 
       real(pr) :: Ar, ArT2, Cv, p, dPdT, dPdV, totn
 
@@ -514,4 +621,42 @@ contains
 
       Cp = Cv - T*dPdT**2/dPdV - totn*R
    end subroutine Cp_residual_vt
+
+   real(pr) function Psat_pure(eos, ncomp, T)
+      !! Calculation of saturation pressure of a pure component using the
+      !! secant method.
+      class(ArModel), intent(in) :: eos !! Model that will be used
+      integer, intent(in) :: ncomp
+      !! Number of component in the mixture from which the saturation pressure
+      !! will be calculated
+      real(pr), intent(in) :: T !! Temperature [K]
+
+      real(pr) :: P1, P2
+      real(pr) :: f1, f2
+
+      real(pr) :: n(size(eos))
+
+      n = 0
+      n(ncomp) = 1
+
+      P1 = 0.5
+      P2 = 1
+
+      do while(abs(diff(P2)) > 1e-5)
+         f1 = diff(P1)
+         f2 = diff(P2)
+         Psat_pure = (P1 * f2 - P2 * f1)/(f2 - f1)
+         P1 = P2
+         P2 = Psat_pure
+      end do
+   contains
+      real(pr) function diff(P)
+         real(pr), intent(in) :: P
+         real(pr) :: V_l, V_v
+         real(pr) :: phi_v(size(eos)), phi_l(size(eos))
+         call eos%lnphi_pt(n, P=P, T=T, V=V_v, lnPhi=phi_v, root_type="vapor")
+         call eos%lnphi_pt(n, P=P, T=T, V=V_l, lnPhi=phi_l, root_type="liquid")
+         diff = phi_v(ncomp) - phi_l(ncomp)
+      end function diff
+   end function Psat_pure
 end module yaeos__models_ar

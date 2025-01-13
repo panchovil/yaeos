@@ -14,6 +14,7 @@ module yaeos__models_ar_genericcubic
    type, abstract :: CubicMixRule
       !! Abstract derived type that describe the required
       !! procedure for a mixing rule on a Cubic EoS
+      logical :: dn2 = .false. !! Calculate second order derivatives
    contains
       procedure(abs_Dmix), deferred :: Dmix
       procedure(abs_Bmix), deferred :: Bmix
@@ -95,6 +96,8 @@ module yaeos__models_ar_genericcubic
       procedure :: residual_helmholtz => GenericCubic_Ar
       procedure :: get_v0 => v0
       procedure :: volume => volume
+      procedure :: set_delta1 => set_delta1
+      procedure :: set_mixrule => set_mixrule
    end type
 
    abstract interface
@@ -269,6 +272,20 @@ contains
       if (present(ArTV)) ArTV = -TOTN*gv - dDdT*fV
       if (present(ArT2)) ArT2 = -dDdT2*f
    end subroutine GenericCubic_Ar
+
+   subroutine set_delta1(self, delta1)
+      class(CubicEoS) :: self
+      real(pr), intent(in) :: delta1(:)
+      self%del1 = delta1
+      self%del2 = (1._pr - delta1)/(1._pr + delta1)
+   end subroutine
+
+   subroutine set_mixrule(self, mixrule)
+      class(CubicEoS), intent(in out) :: self
+      class(CubicMixRule), intent(in) :: mixrule
+      if (allocated(self%mixrule)) deallocate(self%mixrule)
+      self%mixrule = mixrule
+   end subroutine
 
    function v0(self, n, p, t)
       !! Cubic EoS volume initializer.

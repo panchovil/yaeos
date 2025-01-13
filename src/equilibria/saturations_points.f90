@@ -1,18 +1,25 @@
 module yaeos__equilibria_saturation_points
-   use yaeos__constants, only: pr
+   use yaeos__constants, only: pr, R
    use yaeos__models, only: ArModel
    use yaeos__equilibria_equilibrium_state, only: EquilibriumState
-   use yaeos__equilibria_auxiliar, only: k_wilson
+   use yaeos__equilibria_auxiliar, only: k_wilson, P_wilson
+   use ieee_arithmetic, only: ieee_is_nan, ieee_is_finite
 
-   real(pr) :: tol = 1e-9_pr
-   integer :: max_iterations = 1000
+   implicit none
+
+   real(pr) :: tol = 1e-6_pr
+   integer :: max_iterations = 2000
+   integer :: iters_first_step = 15
    real(pr) :: step_tol = 0.1_pr
 
 contains
 
    type(EquilibriumState) function saturation_pressure(model, n, t, kind, p0, y0, max_iters)
+      !! # saturation_pressure
+      !!
       !! Saturation pressure calculation function.
       !!
+      !! ## Description
       !! Calculates the saturation pressure of a multicomponent mixture with
       !! a given molar composition `n`.
       !! It is possible to calculate:
@@ -20,8 +27,19 @@ contains
       !! - Bubble point: `kind="bubble"`
       !! - Dew point: `kind="dew"`
       !! - Liquid-Liquid point: `kind="liquid-liquid"`
+      !!
+      !! It will first try to converge a solution using a \(1D\) Newton method to
+      !! solve the equation
+      !! \[
+      !!    f(P) = \sum_i z_i K_i - 1 = 0
+      !! \]
+      !!
+      !! updating \(K_i\) at each step as the ratio of fugacities of the phases.
+      !! If the solution does not converge, it will use a full Newton method to
+      !! solve the system of equations using the variables \(K_i\) and \(\ln P\).
       use stdlib_optval, only: optval
-      class(ArModel), intent(in) :: model
+      use yaeos__m_s_sp, only: solve_TP
+      class(ArModel), target, intent(in) :: model
       real(pr), intent(in) :: n(:) !! Composition vector [moles / molar fraction]
       real(pr), intent(in) :: t !! Temperature [K]
       character(len=*), intent(in) :: kind !! [bubble|dew|liquid-liquid]
@@ -29,17 +47,18 @@ contains
       real(pr), optional, intent(in) :: y0(:) !! Initial composition
       integer, optional, intent(in) :: max_iters !! Maximum number of iterations
 
-      real(pr) :: p, vy, vz
+      real(pr) :: P
 
       real(pr) :: k(size(n)), y(size(n)), z(size(n)), lnk(size(n))
       real(pr) :: lnfug_y(size(n)), dlnphi_dp_y(size(n))
       real(pr) :: lnfug_z(size(n)), dlnphi_dp_z(size(n))
+      real(pr) :: Vz, Vy
 
       character(len=50) :: incipient
       character(len=50) :: main
 
       real(pr) :: f, step
-      integer :: its, iterations, i
+      integer :: its, iterations
 
       ! =======================================================================
       ! Handle arguments
@@ -48,7 +67,7 @@ contains
       if (present (p0)) then
          p = p0
       else
-         call model%pressure(z, T, 10._pr, P=P)
+         P = p_wilson(model, z, T)
       end if
 
       if (present(y0)) then
@@ -81,7 +100,7 @@ contains
       ! ========================================================================
       !  Solve point
       ! ------------------------------------------------------------------------
-      do its=1, iterations
+      do its=1, iters_first_step
          y = k*z
          call model%lnphi_pt(y, P, T, vy, incipient, lnPhi=lnfug_y, dlnphidp=dlnphi_dp_y)
          call model%lnphi_pt(z, P, T, vz, main, lnPhi=lnfug_z, dlnphidp=dlnphi_dp_z)
@@ -89,7 +108,6 @@ contains
          k = exp(lnfug_z - lnfug_y)
 
          if (all(k < 1e-9_pr) .or. all(abs(k-1) < tol)) exit
-
 
          f = sum(z*k) - 1
          step = f/sum(z * k * (dlnphi_dp_z - dlnphi_dp_y))
@@ -103,6 +121,26 @@ contains
 
       end do
       ! ========================================================================
+      if (its > iters_first_step) then
+         block
+            real(pr) :: X(size(n)+2), S
+            integer :: ns, nc
+            nc = size(n)
+            X(:nc) = log(y/z)
+            X(nc+1) = log(T)
+            X(nc+2) = log(P)
+            ns = nc+1
+            S = X(ns)
+
+            call solve_TP(model, kind, z, X, ns, S, tol, max_iterations, its)
+
+            P = exp(X(nc+2))
+            y = z * exp(X(:nc))
+            call model%volume(n=n, P=P, T=T, V=Vz, root_type=main)
+            call model%volume(n=y, P=P, T=T, V=Vy, root_type=incipient)
+         end block
+      end if
+      
       select case(kind)
        case("bubble")
          saturation_pressure = EquilibriumState(kind="bubble", &
@@ -129,8 +167,18 @@ contains
       !! - Bubble point: `kind="bubble"`
       !! - Dew point: `kind="dew"`
       !! - Liquid-Liquid point: `kind="liquid-liquid"`
+      !! It will first try to converge a solution using a \(1D\) Newton method to
+      !! solve the equation
+      !! \[
+      !!    f(P) = \sum_i z_i K_i - 1 = 0
+      !! \]
+      !!
+      !! updating \(K_i\) at each step as the ratio of fugacities of the phases.
+      !! If the solution does not converge, it will use a full Newton method to
+      !! solve the system of equations using the variables \(K_i\) and \(\ln T\).
       use stdlib_optval, only: optval
-      class(ArModel), intent(in) :: model
+      use yaeos__m_s_sp, only: solve_TP
+      class(ArModel), target, intent(in) :: model
       real(pr), intent(in) :: n(:) !! Composition vector [moles / molar fraction]
       real(pr), intent(in) :: p !! Pressure [bar]
       character(len=*), intent(in) :: kind !! [bubble|dew|liquid-liquid]
@@ -160,7 +208,7 @@ contains
       if (present (t0)) then
          t = t0
       else
-         t = 150._pr
+         t = 250._pr
       end if
 
       if (present(y0)) then
@@ -194,11 +242,9 @@ contains
       end where
 
       ! ========================================================================
-
-      ! ========================================================================
       !  Solve point
       ! ------------------------------------------------------------------------
-      do its=1, iterations
+      do its=1, iters_first_step
          y = k*z
          where (.not. is_incipient)
             y = 0
@@ -209,9 +255,12 @@ contains
 
          k = exp(lnfug_z - lnfug_y)
          f = sum(z*k) - 1
-         step = f/sum(z * k * (dlnphi_dt_z - dlnphi_dt_y))
+         step = f/sum(T * z * k * (dlnphi_dt_z - dlnphi_dt_y))
 
-         do while (abs(step) > 0.25*T .or. T - step < 0)
+         if (.not. ieee_is_finite(step) .or. ieee_is_nan(step)) exit
+
+         do while (T - step < 0)
+            if (isnan(step)) step = 10
             step = step/2
          end do
 
@@ -220,6 +269,26 @@ contains
          if (abs(step) < tol .and. abs(f) < tol) exit
       end do
       ! ========================================================================
+      if (its >= iters_first_step) then
+         block
+            real(pr) :: X(size(n)+2), S
+            integer :: ns, nc
+            nc = size(n)
+            X(:nc) = log(y/z)
+            X(nc+1) = log(T)
+            X(nc+2) = log(P)
+            ns = nc+2
+            S = X(ns)
+
+            call solve_TP(model, kind, z, X, ns, S, tol, max_iterations, its)
+
+            T = exp(X(nc+1))
+            y = z * exp(X(:nc))
+            call model%volume(n=n, P=P, T=T, V=Vz, root_type=main)
+            call model%volume(n=y, P=P, T=T, V=Vy, root_type=incipient)
+         end block
+      end if
+
       select case(kind)
        case("bubble")
          saturation_temperature = EquilibriumState(kind="bubble", &
@@ -235,4 +304,5 @@ contains
             )
       end select
    end function saturation_temperature
+
 end module yaeos__equilibria_saturation_points
