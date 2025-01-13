@@ -17,7 +17,7 @@ program test_deri
    real(pr) :: ar
    real(pr) :: art, arv, arv2, art2, artv
    real(pr) :: arn(size(z)), arvn(size(z)), artn(size(z)), arn2(size(z),size(z)) 
-   real(pr) :: X(n+2) 
+   real(pr) :: X(n+2), del , asd
    !real(pr) :: lnfug(n), dlnphidp(n), dlnphidt(n), dlnphidn(n, n)
 
 
@@ -58,7 +58,12 @@ program test_deri
    ! arn2=0
    X=(/z,v,t/)
    print*, "X",X
+   print*, "X",X(:n)
+   print*, "X",X(n+1)
+   del=1.e-8_pr
 
+   call eos%residual_helmholtz(X(:n), X(n+1), X(n+2), Ar=asd)
+   print*, asd
    test_numdiff: block
 
          real(pr) :: F, numdiff_esc(size(X)), dF_esc(size(X)), dF_vec_2orden(2), numdiff_vec_2orden(2)
@@ -76,7 +81,7 @@ program test_deri
 
          do i=1,size(X)
             dx = 0
-            dx(i) = 1.e-3_pr * X(i)
+            dx(i) = del * X(i)
             X_back = 0
             X_back = X-dx
             X_ford = 0
@@ -92,13 +97,13 @@ program test_deri
          Arv2=dF_vec_2orden(1), Art2=dF_vec_2orden(2), ArVn=dF_vec_cruz(:n),&
          ArTn=dF_vec_cruz(n+1:), ArTV=dF_vec_cruz(2*n+1), Arn2=dF_mat)
          
-         numdiff_vec_2orden(1)=(FdX2(n+1) - 2*F + FdX(n+1))/((X(n+1)*1.e-3_pr)**2) !f(n,t,v+dx)
-         numdiff_vec_2orden(2)=(FdX2(n+2) - 2*F + FdX(n+2))/((X(n+2)*1.e-3_pr)**2)
+         numdiff_vec_2orden(1)=(FdX2(n+1) - 2*F + FdX(n+1))/((X(n+1)*del)**2) !f(n,t,v+dx)
+         numdiff_vec_2orden(2)=(FdX2(n+2) - 2*F + FdX(n+2))/((X(n+2)*del)**2)
 
          do i=1,n
             dx = 0
-            dx(i) = 1.e-3_pr * X(i)
-            dx(n+1) = 1.e-3_pr * X(n+1)
+            dx(i) = del * X(i)
+            dx(n+1) = del * X(n+1)
             X_back_back = 0
             X_back_back = X-dx
             X_ford_ford = 0
@@ -118,8 +123,8 @@ program test_deri
          end do
          do i=1,n
             dx = 0
-            dx(i) = 1.e-3_pr * X(i)
-            dx(n+2) = 1.e-3_pr * X(n+2)
+            dx(i) = del * X(i)
+            dx(n+2) = del * X(n+2)
             X_back_back = 0
             X_back_back = X-dx
             X_ford_ford = 0
@@ -137,8 +142,8 @@ program test_deri
             numdiff_vec_cruz(n+i)=(FdX_ford_ford(n+i)-FdX_ford_back(n+i)-FdX_back_ford(n+i)+FdX_back_back(n+i))/(4*dx(i)*dx(n+2))
          end do
          dx = 0
-         dx(n+1) = 1.e-3_pr * X(n+1)
-         dx(n+2) = 1.e-3_pr * X(n+2)
+         dx(n+1) = del * X(n+1)
+         dx(n+2) = del * X(n+2)
          X_back_back = 0
          X_back_back = X-dx
          X_ford_ford = 0
@@ -166,7 +171,7 @@ program test_deri
             do j=1,n
                if (i==j) then
                   dx=0
-                  dx(i) = 1.e-3_pr * X(i)
+                  dx(i) = del * X(i)
                   X_back = 0
                   X_back = X-dx
                   X_ford = 0
@@ -176,8 +181,8 @@ program test_deri
                   numdiff_mat(i,j)=(FdX2(i) - 2*F + FdX(i))/((dx(i))**2)
                else
                   dx=0
-                  dx(i) = 1.e-3_pr * X(i)
-                  dx(j) = 1.e-3_pr * X(j)
+                  dx(i) = del * X(i)
+                  dx(j) = del * X(j)
                   X_back_back = 0
                   X_back_back = X-dx
                   X_ford_ford = 0
@@ -237,13 +242,13 @@ program test_deri
          ! real(pr) :: F(size(X)), df(size(X), size(X)), numdiff(size(X), size(X))
          ! real(pr) :: FdX(size(X)), dx(size(X)), dFdS(size(X))
          ! real(pr) :: FdX2(size(X))
-               ! call eos%residual_helmholtz(&
-            ! X(:n), X(n+1), X(n+2), Ar=FdX(i), ArV=ArV, ArV2=ArV2, ArT=ArT, ArTV=ArTV, &
-            ! ArT2=ArT2, Arn=Arn, ArVn=ArVn, ArTn=ArTn, Arn2=Arn2 &
-            ! )
-            ! call foo(X - dx, ns, S0, FdX, df, dFdS)
-            ! call foo(X + dx, ns, S0, FdX2, df, dFdS)
-            ! call foo(X, ns, S0, F, df, dFdS)
+         !       call eos%residual_helmholtz(&
+         !    X(:n), X(n+1), X(n+2), Ar=FdX(i), ArV=ArV, ArV2=ArV2, ArT=ArT, ArTV=ArTV, &
+         !    ArT2=ArT2, Arn=Arn, ArVn=ArVn, ArTn=ArTn, Arn2=Arn2 &
+         !    )
+         !    call foo(X - dx, ns, S0, FdX, df, dFdS)
+         !    call foo(X + dx, ns, S0, FdX2, df, dFdS)
+         !    call foo(X, ns, S0, F, df, dFdS)
 
 
          ! loc = maxloc(abs(numdiff - df))

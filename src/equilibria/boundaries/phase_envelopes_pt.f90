@@ -227,6 +227,7 @@ contains
 
          dFdS = 0
          dFdS(nc+2) = -1
+         !write(1,*) F
       end subroutine foo
 
       subroutine update_spec(X, ns, S, dS, dXdS, step_iters)
@@ -253,7 +254,7 @@ contains
          ! - Set step
          ! ---------------------------------------------------------------------
          !write(3,*) ns, dxds(8:)
-         if (maxval(abs(X(:nc))) < 0.1_pr) then
+         if (maxval(abs(X(:nc))) < 0.35_pr) then
             ns = maxloc(abs(dXdS(:nc)), dim=1)
             maxdS=0.01_pr
          else

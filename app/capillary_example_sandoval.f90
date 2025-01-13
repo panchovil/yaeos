@@ -160,7 +160,7 @@ contains
 
         
         !Capillary pressure variables
-        r_poro_in=1E-8 !radio cualquiera de 10 nm
+        r_poro_in=1E-8 !radio cualquiera de 10 nm en m
         ang_cont_in=0 !angulo cualquiera de 0º en radianes
         !ang_cont=ang_cont*3.14/180.0 !la variable esta en º y se necesita en radianes
 

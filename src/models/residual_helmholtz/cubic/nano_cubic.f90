@@ -139,6 +139,25 @@ contains
 
 
       integer :: i, j, nc
+      
+      ! !! Prueba deri numerica
+      ! real(pr) :: X(size(n)+2), del, F
+      ! real(pr) :: X_back_back(size(X)), X_back_ford(size(X)), X_ford_back(size(X)), X_ford_ford(size(X)) 
+      ! real(pr), dimension(2*size(n)) :: FdX_back_back, FdX_ford_ford, FdX_back_ford, FdX_ford_back
+      ! real(pr) :: FdX(size(X)), dx(size(X))
+      ! real(pr) :: FdX2(size(X)), X_back(size(X)), X_ford(size(X))
+
+      ! real(pr) :: dF_mat(size(n),size(n))
+      ! real(pr) :: FdX_mat_back_back(size(n),size(n)), FdX_mat_back_ford(size(n),size(n)),&
+      ! FdX_mat_ford_back(size(n),size(n)), FdX_mat_ford_ford(size(n),size(n)), numdiff_vec_cruz(size(n)*2)
+      
+      ! X=(/n,v,t/)
+      ! del=1.e-3_pr
+
+
+
+
+
 
       nc = size(n)
       TOTN = sum(n)
@@ -200,16 +219,16 @@ contains
                g_modn2_AUX(i,j) = (dBi(i)*dalpha_ads_mixi(j)+dBij(i,j)*alpha_ads_mix-&
                Bmix*dalpha_ads_mixij(i,j)-dBi(j)*dalpha_ads_mixi(i))/(Bmix-V*alpha_ads_mix)
                
-               g_modn2(i,j) = -2*dalpha_ads_mixi(j)*g_modn(i)/alpha_ads_mix+(R/(alpha_ads_mix**2))*&
+               g_modn2(i,j) = ((-2*dalpha_ads_mixi(j)*g_modn(i))/alpha_ads_mix)+(R/(alpha_ads_mix**2))*&
                (dalpha_ads_mixij(i,j)*(log(V*alpha_ads_mix)-log(V*alpha_ads_mix-Bmix))-&
                dalpha_ads_mixi(i)*((Bmix-V*alpha_ads_mix)*g_modvn(j)/R-dalpha_ads_mixi(j)/alpha_ads_mix)-&
                dalpha_ads_mixij(i,j)*log(V)+g_modn2_AUX(i,j)-(dBi(i)*alpha_ads_mix-Bmix*dalpha_ads_mixi(i))*g_modvn(j)/R)
                
                f_modn2_AUX_1(i,j) = dBij(i,j)/Bmix-dalpha_ads_mixij(i,j)/alpha_ads_mix+&
-               dalpha_ads_mixi(i)*dalpha_ads_mixi(j)/(alpha_ads_mix**2)-dBi(i)*dBi(j)/(Bmix**2)
+               (dalpha_ads_mixi(i)*dalpha_ads_mixi(j))/((alpha_ads_mix**2))-(dBi(i)*dBi(j))/((Bmix**2))
 
                f_modn2_AUX_2(i,j) = dBij(i,j)/Bmix+dalpha_ads_mixij(i,j)/alpha_ads_mix-&
-               dalpha_ads_mixi(i)*dalpha_ads_mixi(j)/(alpha_ads_mix**2)-dBi(i)*dBi(j)/(Bmix**2)
+               (dalpha_ads_mixi(i)*dalpha_ads_mixi(j))/((alpha_ads_mix**2))-(dBi(i)*dBi(j))/((Bmix**2))
                
                f_modn2(i,j) = -V*(f_modvn(j)*f_modvn_AUX_1(i)+f_modv*f_modn2_AUX_1(i,j))-&
                (f_modn(j)*f_modvn_AUX_2(i)+f_mod*f_modn2_AUX_2(i,j))
@@ -244,6 +263,117 @@ contains
             end do
          end do
       end if
+
+      ! !! Prueba der numerica Arvn y Artn
+
+      ! if (present(ArVn)) then
+      !    ! print*, "aaaaaaaaaaaaaaaaa", n, v, t
+      !    ! print*, "aaaaaaaaaaaaaaaasda", X
+      !    do i=1,nc
+      !       dx = 0
+      !       dx(i) = del * X(i)
+      !       dx(nc+1) = del * X(nc+1)
+      !       X_back_back = 0
+      !       X_back_back = X-dx
+      !       X_ford_ford = 0
+      !       X_ford_ford = X+dx
+      !       X_back_ford = X
+      !       X_back_ford(i) = X(i)-dx(i)
+      !       X_back_ford(nc+1) = X_back_ford(nc+1)+dx(nc+1)
+      !       X_ford_back = X
+      !       X_ford_back(i) = X(i)+dx(i)
+      !       X_ford_back(nc+1) = X_ford_back(nc+1)-dx(nc+1)
+            
+      !       call self%residual_helmholtz(X_back_back(:nc), X_back_back(nc+1),&
+      !        X_back_back(nc+2), Ar=FdX_back_back(i))
+      !       call self%residual_helmholtz(X_ford_ford(:nc), X_ford_ford(nc+1),&
+      !        X_ford_ford(nc+2), Ar=FdX_ford_ford(i))
+      !       call self%residual_helmholtz(X_back_ford(:nc), X_back_ford(nc+1),&
+      !        X_back_ford(nc+2), Ar=FdX_back_ford(i))
+      !       call self%residual_helmholtz(X_ford_back(:nc), X_ford_back(nc+1),&
+      !        X_ford_back(nc+2), Ar=FdX_ford_back(i))         
+      !       ArVn(i)=(FdX_ford_ford(i)-FdX_ford_back(i)-&
+      !       FdX_back_ford(i)+FdX_back_back(i))/(4*dx(i)*dx(nc+1))
+      !    end do
+      !    !ArVn(:) = numdiff_vec_cruz(:nc)
+      ! end if
+      ! if (present(ArTn)) then
+      !    do i=1,nc
+      !       dx = 0
+      !       dx(i) = del * X(i)
+      !       dx(nc+2) = del * X(nc+2)
+      !       X_back_back = 0
+      !       X_back_back = X-dx
+      !       X_ford_ford = 0
+      !       X_ford_ford = X+dx
+      !       X_back_ford = X
+      !       X_back_ford(i) = X(i)-dx(i)
+      !       X_back_ford(nc+2) = X_back_ford(nc+2)+dx(nc+2)
+      !       X_ford_back = X
+      !       X_ford_back(i) = X(i)+dx(i)
+      !       X_ford_back(nc+2) = X_ford_back(nc+2)-dx(nc+2)
+      !       call self%residual_helmholtz(X_back_back(:nc), X_back_back(nc+1),&
+      !        X_back_back(nc+2), Ar=FdX_back_back(nc+i))
+      !       call self%residual_helmholtz(X_ford_ford(:nc), X_ford_ford(nc+1),&
+      !        X_ford_ford(nc+2), Ar=FdX_ford_ford(nc+i))
+      !       call self%residual_helmholtz(X_back_ford(:nc), X_back_ford(nc+1),&
+      !        X_back_ford(nc+2), Ar=FdX_back_ford(nc+i))
+      !       call self%residual_helmholtz(X_ford_back(:nc), X_ford_back(nc+1),&
+      !        X_ford_back(nc+2), Ar=FdX_ford_back(nc+i))         
+            
+      !       ArTn(i)=(FdX_ford_ford(nc+i)-FdX_ford_back(nc+i)-&
+      !       FdX_back_ford(nc+i)+FdX_back_back(nc+i))/(4*dx(i)*dx(nc+2))
+      !    end do
+      !    !ArTn(:) = numdiff_vec_cruz(nc+1:)
+      ! end if
+
+
+      ! !! prueba der numerica Arn2
+      ! if (present(Arn2)) then
+      !    call self%residual_helmholtz(X(:nc), X(nc+1), X(nc+2), Ar=F)
+
+      !    do i = 1, nc
+      !       do j = 1, nc
+      !          if (i==j) then
+      !             dx=0
+      !             dx(i) = del * X(i)
+      !             X_back = 0
+      !             X_back = X-dx
+      !             X_ford = 0
+      !             X_ford = X+dx
+      !             call self%residual_helmholtz(X_back(:nc), X_back(nc+1), &
+      !             X_back(nc+2), Ar=FdX(i))
+      !             call self%residual_helmholtz(X_ford(:nc), X_ford(nc+1), &
+      !             X_ford(nc+2), Ar=FdX2(i))
+      !             Arn2(i,j)=(FdX2(i) - 2*F + FdX(i))/((dx(i))**2)
+      !          else
+      !             dx=0
+      !             dx(i) = del * X(i)
+      !             dx(j) = del * X(j)
+      !             X_back_back = 0
+      !             X_back_back = X-dx
+      !             X_ford_ford = 0
+      !             X_ford_ford = X+dx
+      !             X_back_ford = X
+      !             X_back_ford(i) = X(i)-dx(i)
+      !             X_back_ford(j) = X_back_ford(j)+dx(j)
+      !             X_ford_back = X
+      !             X_ford_back(i) = X(i)+dx(i)
+      !             X_ford_back(j) = X_ford_back(j)-dx(j)
+      !             call self%residual_helmholtz(X_back_back(:nc), &
+      !             X_back_back(nc+1), X_back_back(nc+2), Ar=FdX_mat_back_back(i,j))
+      !             call self%residual_helmholtz(X_ford_ford(:nc), &
+      !             X_ford_ford(nc+1), X_ford_ford(nc+2), Ar=FdX_mat_ford_ford(i,j))
+      !             call self%residual_helmholtz(X_back_ford(:nc), &
+      !             X_back_ford(nc+1), X_back_ford(nc+2), Ar=FdX_mat_back_ford(i,j))
+      !             call self%residual_helmholtz(X_ford_back(:nc), &
+      !             X_ford_back(nc+1), X_ford_back(nc+2), Ar=FdX_mat_ford_back(i,j)) 
+      !             Arn2(i,j) = (FdX_mat_ford_ford(i,j)-FdX_mat_ford_back(i,j)-&
+      !             FdX_mat_back_ford(i,j)+FdX_mat_back_back(i,j))/(4*dx(i)*dx(j))
+      !          end if
+      !       end do
+      !    end do
+      ! end if
 
       ! TEMPERATURE DERIVATIVES
       if (present(ArT))  ArT = -TOTN*g_mod - dDdT*f_mod
