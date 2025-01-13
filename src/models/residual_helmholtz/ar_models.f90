@@ -314,7 +314,7 @@ contains
       real(pr), optional, intent(out) :: dPdV !! \(\frac{dP}{dV}\)
       real(pr), optional, intent(out) :: dPdT !! \(\frac{dP}{dT}\)
       real(pr), optional, intent(out) :: dPdn(:) !! \(\frac{dP}{dn_i}\)
-      real(pr), optional, intent(out) :: lnFug(size(n)) !! \(\ln(phi*P)\) vector
+      real(pr), optional, intent(out) :: lnFug(size(n)) !! \(\ln(phi*P)\) mandatory vector for capillarity calculations
       real(pr), optional, intent(out) :: dVdT !! \(\frac{dV}{dT}\)
       real(pr), optional, intent(out) :: dVdn(size(n)) !! \(\frac{dV}{dn_i}\)
 
