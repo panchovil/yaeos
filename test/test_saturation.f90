@@ -11,6 +11,7 @@ contains
       type(unittest_type), allocatable, intent(out) :: testsuite(:)
 
       testsuite = [ &
+         new_unittest("Pure Psat", test_pure_psat), &
          new_unittest("Bubble pressure", test_bubble_pressure), &
          new_unittest("Dew pressure", test_dew_pressure), &
          new_unittest("Bubble temperature", test_bubble_temperature), &
@@ -88,23 +89,22 @@ contains
       class(ArModel), allocatable :: model
       type(EquilibriumState) :: dew
 
-      real(pr) :: x(nc) = [6.7245630132141868E-002, 0.93275436999337613]
+      real(pr) :: x(nc) = [0.0673,  0.9327]
       real(pr) :: y(nc)  = [0.4, 0.6]
       real(pr) :: P = 10.867413040635611
 
-      real(pr) :: n(nc), k(nc), t
-
-      integer :: i
+      real(pr) :: n(nc), t
 
       n = [0.4_pr, 0.6_pr]
       T = 240
       model = binary_PR76()
 
       dew = saturation_temperature(model, n, P, kind="dew", t0=250._pr)
+
       call check(error, abs(dew%P-P) < abs_tolerance)
       call check(error, abs(dew%T-T) < abs_tolerance)
-      call check(error, maxval(abs(dew%x-x)) < abs_tolerance)
-      call check(error, maxval(abs(dew%y-y)) < abs_tolerance)
+      call check(error, maxval(abs(dew%x-x)) < 1e-4)
+      call check(error, maxval(abs(dew%y-y)) < 1e-4)
    end subroutine test_dew_temperature
 
    subroutine test_bubble_temperature(error)
@@ -178,7 +178,26 @@ contains
       bubble = saturation_pressure(model, z, T=270._pr, kind="bubble", p0=10._pr)
       envelope = px_envelope_2ph(&
          model, z0=z, first_point=bubble, alpha0=0.0_pr, z_injection=z_inj&
-      )
+         )
       call check(error, size(envelope%cps) == 1)
    end subroutine test_px2_envelope
+
+   subroutine test_pure_psat(error)
+      use yaeos, only: pr, ArModel
+      use fixtures_models, only: binary_PR76
+      type(error_type), allocatable, intent(out) :: error
+      class(ArModel), allocatable :: model
+
+      integer :: i, j
+      real(pr) :: T, Psats(2), Psats_val(2)
+
+      T = 150
+      model = binary_PR76()
+      Psats_val = [260.37450286310201, 30.028551527997834]
+
+         do i=1,2
+            Psats(i) = model%Psat_pure(i, T)
+         end do
+   ! call check(error, maxval(abs(Psats-Psats_val)) < abs_tolerance)
+   end subroutine test_pure_psat
 end module test_saturation

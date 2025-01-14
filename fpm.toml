@@ -1,5 +1,5 @@
 name = "yaeos"
-version = "1.0.0"
+version = "2.3.0"
 license = "MPL"
 author = "Federico E. Benelli"
 maintainer = "federico.benelli@mi.unc.edu.ar"
@@ -17,17 +17,18 @@ library = true
 
 [fortran]
 implicit-typing = false
-implicit-external = false
+implicit-external = true
 source-form = "free"
 
 [dependencies]
-stdlib = "*"
+stdlib = { git="https://github.com/fortran-lang/stdlib", branch="stdlib-fpm" }
 forbear = {git="https://github.com/szaghi/forbear"}
 json-fortran = {git="https://github.com/jacobwilliams/json-fortran"}
-# nlopt-f = {git="https://github.com/grimme-lab/nlopt-f"}
 forsus = {git="https://github.com/ipqa-research/forsus"}
 fortime = { git = "https://github.com/gha3mi/fortime.git" }
 PowellOpt = { git = "https://github.com/jacobwilliams/PowellOpt/" }
+minpack = {git = "https://github.com/fortran-lang/minpack" }
+finterp = { git = "https://github.com/jacobwilliams/finterp.git" }
 
 [dev-dependencies]
 test-drive = {git = "https://github.com/fortran-lang/test-drive"}
@@ -72,10 +73,10 @@ name       = "huron_vidal"
 source-dir = "example/basics"
 main       = "7_huron_vidal.f90"
 
-[[example]]
-name       = "cubic_eos"
-source-dir = "example/advanced"
-main       = "cubic_eos.f90"
-[example.dependencies]
-nlopt-f = {git="https://github.com/grimme-lab/nlopt-f"}
+# [[example]]
+# name       = "cubic_eos"
+# source-dir = "example/advanced"
+# main       = "cubic_eos.f90"
+# [example.dependencies]
+# nlopt-f = {git="https://github.com/grimme-lab/nlopt-f"}
 

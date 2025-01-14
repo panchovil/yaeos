@@ -10,7 +10,7 @@ module yaeos__math_continuation
       integer :: ns
       real(pr) :: S
       real(pr) :: dS
-   end type
+   end type ContinuationVariable
 
    abstract interface
       subroutine continuation_function(X, ns, S, F, dF, dFdS)
@@ -155,7 +155,6 @@ contains
             ns = maxloc(abs(dXdS), dim=1)
             dS = dXdS(ns)*dS
             dXdS = dXdS/dXdS(ns)
-            dS = sign(minval(abs([0.05_pr, dS])), dS)
          end if
 
          if (present(postprocess)) then
@@ -165,6 +164,8 @@ contains
          if (present(stop)) then
             if (stop(X, ns, S, dS, dXdS, newton_its)) exit
          end if
+
+         if (dS == 0) exit
 
          X = X + dXdS * dS
          S = X(ns)
@@ -191,14 +192,14 @@ contains
       real(pr), intent(out) :: F(:) !! Function values at solved point
       real(pr), intent(out) :: df(:, :) !! Jacobian values
       real(pr), intent(out) :: dfds(:) !! dFdS
-      real(pr), optional, intent(in) :: tol
+      real(pr), intent(in) :: tol
 
       real(pr) :: X0(size(X))
 
       real(pr) :: dX(size(X)), solve_tol ,first_tol
 
       first_tol = 10.0_pr
-      solve_tol = optval(tol, 1.e-5_pr)
+      solve_tol = tol
 
       dX = 20
       F = 500
@@ -209,7 +210,7 @@ contains
          if (maxval(abs(dx)) < solve_tol .or. maxval(abs(F)) < solve_tol) exit newton
 
          call fun(X, ns, S, F, dF, dFdS)
-         if (maxval(abs(F)) < solve_tol) exit
+         if (maxval(abs(F)) < solve_tol) exit !! estaba en el viejo
 
          dX = solve_system(dF, -F)
          ! Fix the step
@@ -218,7 +219,7 @@ contains
                dX = dX/2
             end do
          else
-            do while(maxval(abs(dx)) > 0.08)
+            do while(maxval(abs(dx)) > 0.1)
                dX = dX/2
             end do
             ! if (iters > 10)  then
@@ -233,4 +234,42 @@ contains
       end do newton
 
    end subroutine full_newton
+
+   ! subroutine levenberg_marquardt(&
+   !    fun, iters, X, ns, S, dS, dXdS, point, max_iters, F, dF, dFdS, tol &
+   !    )
+   !    use minpack_module, only: lmdif1
+   !    use stdlib_optval, only: optval
+   !    use yaeos__math_linalg, only: solve_system
+   !    procedure(continuation_function) :: fun !! Function to solve
+   !    integer,  intent(out) :: iters !! Number of iterations needed
+   !    real(pr), intent(in out) :: X(:)  !! Variables vector
+   !    integer, intent(in) :: ns
+   !    real(pr), intent(in) :: S
+   !    real(pr), intent(in) :: dS
+   !    real(pr), intent(in) :: dXdS(:)
+   !    integer, intent(in) :: point
+   !    integer, intent(in) :: max_iters !! Maximum iterations
+   !    real(pr), intent(out) :: F(:) !! Function values at solved point
+   !    real(pr), intent(out) :: df(:, :) !! Jacobian values
+   !    real(pr), intent(out) :: dfds(:) !! dFdS
+   !    real(pr), intent(in) :: tol
+
+   !    integer :: m, n, info, iwa(size(x))
+   !    integer :: lwa
+   !    real(pr) :: wa(size(F) * size(x) + 5*size(x) + size(f))
+
+   !    m = size(F)
+   !    n = size(x)
+   !    lwa = size(F) * size(x)+5*size(x)+size(f)
+   !    call lmdif1(fcn, m, n, x, F, tol, Info, Iwa, Wa, Lwa)
+   !    contains
+   !    subroutine fcn(m, n, xx, fvec, iflag)
+   !       integer, intent(in) :: m, n
+   !       real(pr), intent(in) :: xx(n)
+   !       real(pr), intent(out) :: fvec(m)
+   !       integer, intent(in out) :: iflag
+   !       call fun(xx, ns, S, fvec, dF, dFdS)
+   !    end subroutine
+   ! end subroutine
 end module yaeos__math_continuation
