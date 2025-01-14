@@ -3,7 +3,6 @@ module yaeos__equilibria_boundaries_phase_envelopes_pt
    use yaeos__constants, only: pr
    use yaeos__models, only: ArModel
    use yaeos__equilibria_equilibrium_state, only: EquilibriumState
-   use yaeos__equilibria_auxiliar, only: k_wilson
    use yaeos__math_continuation, only: &
       continuation, continuation_solver, continuation_stopper
    implicit none
@@ -35,7 +34,7 @@ contains
    function pt_envelope_2ph(&
       model, z, first_point, &
       points, iterations, delta_0, specified_variable_0, &
-      solver, stop_conditions, maximum_pressure &
+      solver, stop_conditions &
       ) result(envelopes)
       !! PT two-phase envelope calculation procedure.
       !!
@@ -49,8 +48,7 @@ contains
       !! Thermodyanmic model
       real(pr), intent(in) :: z(:)
       !! Vector of molar fractions
-      type(EquilibriumState), intent(in) :: first_point
-      !! Initial point of the envelope
+      type(EquilibriumState) :: first_point
       integer, optional, intent(in) :: points
       !! Maxmimum number of points, defaults to 500
       integer, optional, intent(in) :: iterations
@@ -66,8 +64,6 @@ contains
       !! Specify solver for each point, defaults to a full newton procedure
       procedure(continuation_stopper), optional :: stop_conditions
       !! Function that returns true if the continuation method should stop
-      real(pr), optional, intent(in) :: maximum_pressure
-      !! Maximum pressure to calculate [bar]
       type(PTEnvel2) :: envelopes
       ! ------------------------------------------------------------------------
 
@@ -98,16 +94,13 @@ contains
       dS0 = optval(delta_0, 0.1_pr)
 
 
+      ! Correctly define the K-values based on the provided incipient point.
       select case(first_point%kind)
        case("bubble", "liquid-liquid")
          X(:nc) = log(first_point%y/z)
        case("dew")
          X(:nc) = log(first_point%x/z)
       end select
-
-      where(z == 0)
-         X(:nc) = 0
-      end where
 
       X(nc+1) = log(first_point%T)
       X(nc+2) = log(first_point%P)
@@ -154,7 +147,7 @@ contains
       ! ------------------------------------------------------------------------
       XS = continuation(&
          foo, X, ns0=ns, S0=S0, &
-         dS0=dS0, max_points=max_points, solver_tol=1.e-7_pr, &
+         dS0=dS0, max_points=max_points, solver_tol=1.e-9_pr, &
          update_specification=update_spec, &
          solver=solver, stop=stop_conditions &
          )
@@ -198,9 +191,6 @@ contains
             kind_y = "vapor"
           case ("dew")
             kind_z = "vapor"
-            kind_y = "liquid"
-          case ("liquid-liquid")
-            kind_z = "liquid"
             kind_y = "liquid"
           case default
             kind_z = "stable"
@@ -255,7 +245,7 @@ contains
          integer, intent(in) :: step_iters
          !! Iterations used in the solver
 
-         real(pr) :: maxdS, dT, dP, Xold(size(X))
+         real(pr) :: maxdS
 
          ! =====================================================================
          ! Update specification
@@ -281,22 +271,7 @@ contains
             ] &
             )
 
-         ! Avoid small steps on T or P
-         do while(&
-            abs(dXdS(nc+1)*dS) < 0.05 &
-            .and. abs(dXdS(nc+2)*dS) < 0.05 &
-            .and. dS /= 0)
-            dS = dS * 1.1
-         end do
-
-         ! Dont make big steps in compositions
-         do while(maxval(abs(dXdS(:nc)*dS)) > 0.1 * maxval(abs(X(:nc))))
-            dS = 0.7*dS
-         end do
-
-         if (present(maximum_pressure)) then
-            if (X(nc+2) > log(maximum_pressure)) dS = 0
-         end if
+         dS = sign(1.0_pr, dS) * maxval([abs(dS), maxdS])
 
          call save_point(X, step_iters, ns)
          call detect_critical(X, dXdS, ns, S, dS)
@@ -314,7 +289,6 @@ contains
          T = exp(X(nc+1))
          P = exp(X(nc+2))
          y = exp(X(:nc))*z
-
          select case(kind)
           case("bubble")
             point = EquilibriumState(&
@@ -332,6 +306,7 @@ contains
                T=T, P=P, beta=0._pr, iters=iters &
                , ns=ns)
          end select
+
          envelopes%points = [envelopes%points, point]
       end subroutine save_point
 
@@ -367,16 +342,10 @@ contains
          real(pr) :: Xold(size(X)) !! Old value of X
          real(pr) :: Xnew(size(X)) !! Value of the next initialization
 
-         integer :: inner
-
          Xold = X
 
-         inner = 0
-         do while (&
-            maxval(abs(X(:nc))) < 0.07 &
-            .and. inner < 5000)
+         do while (maxval(abs(X(:nc))) < 0.05)
             ! If near a critical point, jump over it
-            inner = inner + 1
             S = S + dS
             X = X + dXdS*dS
          end do
@@ -452,7 +421,6 @@ contains
          write(unit, *) pt2%cps(cp)%T, pt2%cps(cp)%P
       end do
    end subroutine write_PTEnvel2
-
    type(PTEnvel2) function find_hpl(model, z, T0, P0)
       !! # find_hpl
       !!

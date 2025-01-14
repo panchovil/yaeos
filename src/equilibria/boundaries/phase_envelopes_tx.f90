@@ -285,14 +285,16 @@ contains
             dS = dS*1.1_pr
          end do
 
-         call save_point(X, step_iters)
+         call save_point(X, step_iters, ns)
          call detect_critical(X, dXdS, ns, S, dS)
       end subroutine update_spec
 
-      subroutine save_point(X, iters)
+      subroutine save_point(X, iters, ns)
          !! Save the converged point
          real(pr), intent(in) :: X(:)
          integer, intent(in) :: iters
+         integer, intent(in) :: ns
+
          type(EquilibriumState) :: point
 
          real(pr) :: y(nc), T, alpha
@@ -306,17 +308,17 @@ contains
             point = EquilibriumState(&
                kind=kind, x=z, Vx=Vz, y=y, Vy=Vy, &
                T=T, P=P, beta=0._pr, iters=iters &
-               )
+               , ns=ns)
           case("dew")
             point = EquilibriumState(&
                kind=kind, x=y, Vx=Vy, y=z, Vy=Vz, &
                T=T, P=P, beta=0._pr, iters=iters &
-               )
+               , ns=ns)
           case default
             point = EquilibriumState(&
                kind="saturation", x=z, Vx=Vz, y=y, Vy=Vy, &
                T=T, P=P, beta=0._pr, iters=iters &
-               )
+               , ns=ns)
          end select
 
          envelopes%alpha = [envelopes%alpha, alpha]

@@ -3,7 +3,7 @@ module yaeos__models_ar_nanocubic
    use yaeos__models_ar, only: ArModel
    use yaeos__substance, only: Substances
    use yaeos__models_ar_genericcubic, only: AlphaFunction, CubicEoS, v0, CubicMixRule, volume
-   use yaeos__models_ar_cubic_quadratic_mixing, only: QMR, Dmix, D1mix_constant, Bmix
+   use yaeos__models_ar_cubic_quadratic_mixing, only: QMR, Dmix, Bmix
    implicit none
 
    ! type, extends (QMR) :: CubicMixRuleNano
@@ -14,9 +14,9 @@ module yaeos__models_ar_nanocubic
    type, extends(QMR) :: CubicMixRuleNano
    !! blablablabla
    contains
-      procedure :: Dmix => Dmix_wrapper !! Attractive parameter mixing rule
-      procedure :: Bmix => Bmix_wrapper !! Repulsive parameter mixing rule
-      procedure :: D1mix => D1mix_constant_wrapper
+      ! procedure :: Dmix => Dmix_wrapper !! Attractive parameter mixing rule
+      ! procedure :: Bmix => Bmix_wrapper !! Repulsive parameter mixing rule
+      ! procedure :: D1mix => D1mix_constant_wrapper
       procedure :: alpha_ads_mix_linear
    end type CubicMixRuleNano
 
@@ -28,7 +28,7 @@ module yaeos__models_ar_nanocubic
       real(pr), allocatable :: alpha_ads_i(:)
    contains
       procedure :: residual_helmholtz => GenericCubic_Ar_Nano
-      procedure :: get_v0 => v0_wrapper
+      !procedure :: get_v0 => v0_wrapper
       !procedure :: volume => volume
       !procedure :: init_nano
    end type CubicEoSNano
@@ -384,64 +384,64 @@ contains
 
    end subroutine GenericCubic_Ar_Nano
 
-   function v0_wrapper(self, n, p, t)
-      class(CubicEoSNano), intent(in) :: self
-      real(pr), intent(in) :: n(:), p, t
-      real(pr) :: v0_wrapper
+   ! function v0_wrapper(self, n, p, t)
+   !    class(CubicEoSNano), intent(in) :: self
+   !    real(pr), intent(in) :: n(:), p, t
+   !    real(pr) :: v0_wrapper
 
-      !real(pr) :: dbi(size(n)), dbij(size(n), size(n))
-      !call self%mixrule%Bmix(n, self%b, v0, dbi, dbij)
-      v0_wrapper = v0(self, n, p, t)
-   end function
+   !    !real(pr) :: dbi(size(n)), dbij(size(n), size(n))
+   !    !call self%mixrule%Bmix(n, self%b, v0, dbi, dbij)
+   !    v0_wrapper = v0(self, n, p, t)
+   ! end function
 
-   subroutine D1mix_constant_wrapper(self, n, d1i, D1, dD1i, dD1ij)
-      class(CubicMixRuleNano), intent(in) :: self !! Mixing rule
-      real(pr), intent(in) :: n(:) !! Moles vector
-      real(pr), intent(in) :: d1i(:) !! \(\delta_1\) parameter
-      real(pr), intent(out) :: D1 !! Mixture's \(\Delta_1\)
-      real(pr), intent(out) :: dD1i(:) !! \(\frac{dDelta_1}{dn_i} = 0\)
-      real(pr), intent(out) :: dD1ij(:, :) !! \(\frac{d^2Delta_1}{dn_{ij}} = 0\)
-      call D1mix_constant(self, n, d1i, D1, dD1i, dD1ij)
-   end subroutine
+   ! subroutine D1mix_constant_wrapper(self, n, d1i, D1, dD1i, dD1ij)
+   !    class(CubicMixRuleNano), intent(in) :: self !! Mixing rule
+   !    real(pr), intent(in) :: n(:) !! Moles vector
+   !    real(pr), intent(in) :: d1i(:) !! \(\delta_1\) parameter
+   !    real(pr), intent(out) :: D1 !! Mixture's \(\Delta_1\)
+   !    real(pr), intent(out) :: dD1i(:) !! \(\frac{dDelta_1}{dn_i} = 0\)
+   !    real(pr), intent(out) :: dD1ij(:, :) !! \(\frac{d^2Delta_1}{dn_{ij}} = 0\)
+   !    call D1mix_constant(self, n, d1i, D1, dD1i, dD1ij)
+   ! end subroutine
 
-   subroutine Bmix_wrapper(self, n, bi, B, dBi, dBij)
-      class(CubicMixRuleNano), intent(in) :: self !! Mixing rule
-      real(pr), intent(in) :: n(:) !! Moles vector.
-      real(pr), intent(in) :: bi(:) !! Pure components repulsive parameters.
-      real(pr), intent(out) :: B !! Mixture repulsive parameter.
-      real(pr), intent(out) :: dBi(:) !! \(\frac{dB}{dn_i}\)
-      real(pr), intent(out) :: dBij(:, :) !!\(\frac{d^2B}{dn_{ij}}\)
-      call Bmix(self, n, bi, B, dBi, dBij)
-   end subroutine
+   ! subroutine Bmix_wrapper(self, n, bi, B, dBi, dBij)
+   !    class(CubicMixRuleNano), intent(in) :: self !! Mixing rule
+   !    real(pr), intent(in) :: n(:) !! Moles vector.
+   !    real(pr), intent(in) :: bi(:) !! Pure components repulsive parameters.
+   !    real(pr), intent(out) :: B !! Mixture repulsive parameter.
+   !    real(pr), intent(out) :: dBi(:) !! \(\frac{dB}{dn_i}\)
+   !    real(pr), intent(out) :: dBij(:, :) !!\(\frac{d^2B}{dn_{ij}}\)
+   !    call Bmix(self, n, bi, B, dBi, dBij)
+   ! end subroutine
 
-   subroutine Dmix_wrapper(self, n, T, &
-      ai, daidt, daidt2, &
-      D, dDdT, dDdT2, dDi, dDidT, dDij)
-      class(CubicMixRuleNano), intent(in) :: self !! Mixing rule
-      real(pr), intent(in) :: T !! Temperature [K]
-      real(pr), intent(in) :: n(:) !! Moles vector [mol]
-      real(pr), intent(in) :: ai(:) !! Pure components attractive parameters \(a_i\)
-      real(pr), intent(in) :: daidt(:) !! \(\frac{da_i}{dT}\)
-      real(pr), intent(in) :: daidt2(:) !! \(\frac{d^2a_i}{dT^2}\)
+   ! subroutine Dmix_wrapper(self, n, T, &
+   !    ai, daidt, daidt2, &
+   !    D, dDdT, dDdT2, dDi, dDidT, dDij)
+   !    class(CubicMixRuleNano), intent(in) :: self !! Mixing rule
+   !    real(pr), intent(in) :: T !! Temperature [K]
+   !    real(pr), intent(in) :: n(:) !! Moles vector [mol]
+   !    real(pr), intent(in) :: ai(:) !! Pure components attractive parameters \(a_i\)
+   !    real(pr), intent(in) :: daidt(:) !! \(\frac{da_i}{dT}\)
+   !    real(pr), intent(in) :: daidt2(:) !! \(\frac{d^2a_i}{dT^2}\)
 
-      real(pr), intent(out) :: D !! Mixture attractive parameter \(n^2a_{mix}\)
-      real(pr), intent(out) :: dDdT !! \(\frac{dD}{dT}\)
-      real(pr), intent(out) :: dDdT2 !! \(\frac{d^2D}{dT^2}\)
-      real(pr), intent(out) :: dDi(:) !! \(\frac{dD}{dn_i}\)
-      real(pr), intent(out) :: dDidT(:) !! \(\frac{d^2D}{dTn_i}\)
-      real(pr), intent(out) :: dDij(:, :)!! \(\frac{d^2D}{dn_{ij}}\)
+   !    real(pr), intent(out) :: D !! Mixture attractive parameter \(n^2a_{mix}\)
+   !    real(pr), intent(out) :: dDdT !! \(\frac{dD}{dT}\)
+   !    real(pr), intent(out) :: dDdT2 !! \(\frac{d^2D}{dT^2}\)
+   !    real(pr), intent(out) :: dDi(:) !! \(\frac{dD}{dn_i}\)
+   !    real(pr), intent(out) :: dDidT(:) !! \(\frac{d^2D}{dTn_i}\)
+   !    real(pr), intent(out) :: dDij(:, :)!! \(\frac{d^2D}{dn_{ij}}\)
       
-      ! Variable temporal para manejar la conversión
-      !class(QMR), pointer :: base_ptr
+   !    ! Variable temporal para manejar la conversión
+   !    !class(QMR), pointer :: base_ptr
 
-      ! Apuntar a la parte base del objeto
-      !base_ptr => self
+   !    ! Apuntar a la parte base del objeto
+   !    !base_ptr => self
 
-      ! Llamar a Dmix usando la referencia al tipo base
-      call Dmix(self, n, T, &
-      ai, daidt, daidt2, &
-      D, dDdT, dDdT2, dDi, dDidT, dDij)
-   end subroutine
+   !    ! Llamar a Dmix usando la referencia al tipo base
+   !    call Dmix(self, n, T, &
+   !    ai, daidt, daidt2, &
+   !    D, dDdT, dDdT2, dDi, dDidT, dDij)
+   ! end subroutine
 
 end module
       !--------------------------- aca lo viejo ------------------------------------------
