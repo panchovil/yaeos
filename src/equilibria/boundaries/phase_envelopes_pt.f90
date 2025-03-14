@@ -25,6 +25,9 @@ module yaeos__equilibria_boundaries_phase_envelopes_pt
       generic, public :: write (FORMATTED) => write
    end type PTEnvel2
 
+   real(pr), parameter :: near_critical_K = 0.05 !! new
+
+
    ! Saved volume values
    real(pr), private :: Vz
    real(pr), private :: Vy
@@ -342,10 +345,20 @@ contains
          real(pr) :: Xold(size(X)) !! Old value of X
          real(pr) :: Xnew(size(X)) !! Value of the next initialization
 
-         Xold = X
+         integer :: inner, ncomp !! new
 
-         do while (maxval(abs(X(:nc))) < 0.05)
+         Xold = X
+         inner = 0 !new
+
+         ! do while (maxval(abs(X(:nc))) < 0.05)
+         !    ! If near a critical point, jump over it
+         !    S = S + dS
+         !    X = X + dXdS*dS
+         ! end do 
+         ! new
+         do while (maxval(abs(X(:nc))) < near_critical_K  .and. inner < 5000)
             ! If near a critical point, jump over it
+            inner = inner + 1
             S = S + dS
             X = X + dXdS*dS
          end do
@@ -363,13 +376,18 @@ contains
             end select
 
             ! 0 = a*X(ns) + (1-a)*Xnew(ns) < Interpolation equation to get X(ns) = 0
-            a = -Xnew(ns)/(X(ns) - Xnew(ns))
+            ! a = -Xnew(ns)/(X(ns) - Xnew(ns))
+            ncomp = maxloc(abs(Xold(:nc) - Xnew(:nc)), dim=1) !new
+            a = -Xnew(ncomp)/(X(ncomp) - Xnew(ncomp))! new
+
             Xc = a * X + (1-a)*Xnew
 
             envelopes%cps = [&
                envelopes%cps, CriticalPoint(T=exp(Xc(nc+1)), P=exp(Xc(nc+2))) &
                ]
-            X = Xc + dXdS*dS
+            ! X = Xc + dXdS*dS
+            X = Xc + dXdS*(dS*1.5)
+            S = X(ns)
          end if
       end subroutine detect_critical
    end function pt_envelope_2ph

@@ -198,19 +198,20 @@ contains
       ! This requires to multiply by R all g, f
       ! ------------------------------------------------------------------------
       f_mod = log((alpha_ads_mix*V + D1*Bmix)/(alpha_ads_mix*V + D2*Bmix))/(Bmix*alpha_ads_mix*(D1 - D2))
-      g_mod = R*(((1/alpha_ads_mix)-1)*log(V)+(log(alpha_ads_mix*V-Bmix)-log(alpha_ads_mix*V))/alpha_ads_mix)
-      g_modv = R*((1/(V*alpha_ads_mix-Bmix))-1/V)
-      f_modv = -1/((V*alpha_ads_mix + D1*Bmix)*(V*alpha_ads_mix + D2*Bmix))
-      g_modv2 = R*(1/V**2 - alpha_ads_mix/(V*alpha_ads_mix - Bmix)**2)
+      g_mod = R*(((1._pr/alpha_ads_mix)-1._pr)*log(V/TOTN)+&
+      (log(alpha_ads_mix*V-Bmix)-log(alpha_ads_mix*V))/alpha_ads_mix)
+      g_modv = R*((1._pr/(V*alpha_ads_mix-Bmix))-1._pr/V)
+      f_modv = -1._pr/((V*alpha_ads_mix + D1*Bmix)*(V*alpha_ads_mix + D2*Bmix))
+      g_modv2 = R*(1._pr/V**2._pr - alpha_ads_mix/(V*alpha_ads_mix - Bmix)**2._pr)
       f_modv2 = alpha_ads_mix*(Bmix*D1+Bmix*D2+(2*V*alpha_ads_mix))/&
-      (((Bmix*D1+V*alpha_ads_mix)**2)*((Bmix*D2+V*alpha_ads_mix)**2))
-
-      g_modn = R/(alpha_ads_mix**2)*(((dBi*alpha_ads_mix-Bmix*dalpha_ads_mixi)/(Bmix-V*alpha_ads_mix))-dalpha_ads_mixi*&
-      log(V)+dalpha_ads_mixi*(log(alpha_ads_mix*V)-log((alpha_ads_mix*V-Bmix))))
+      (((Bmix*D1+V*alpha_ads_mix)**2._pr)*((Bmix*D2+V*alpha_ads_mix)**2._pr))
+      g_modn = R/(alpha_ads_mix**2._pr)*(((alpha_ads_mix**2._pr)-alpha_ads_mix)/TOTN+&
+      ((dBi*alpha_ads_mix-Bmix*dalpha_ads_mixi)/(Bmix-V*alpha_ads_mix))-dalpha_ads_mixi*&
+      log(V/TOTN)+dalpha_ads_mixi*(log(alpha_ads_mix*V)-log((alpha_ads_mix*V-Bmix))))
       f_modvn_AUX_1 = -(dalpha_ads_mixi/alpha_ads_mix)+dBi/Bmix
       f_modvn_AUX_2 = dalpha_ads_mixi/alpha_ads_mix+dBi/Bmix
       f_modn = -f_modv*(V*(f_modvn_AUX_1))-f_mod*(f_modvn_AUX_2)
-      g_modvn = R*((dBi-V*dalpha_ads_mixi)/((Bmix-V*alpha_ads_mix)**2))
+      g_modvn = R*((dBi-V*dalpha_ads_mixi)/((Bmix-V*alpha_ads_mix)**2._pr))
       f_modvn = -(f_modvn_AUX_1*(f_modv2*V+f_modv))-f_modvn_AUX_2*f_modv
 
       if (present(Arn2)) then
@@ -219,16 +220,19 @@ contains
                g_modn2_AUX(i,j) = (dBi(i)*dalpha_ads_mixi(j)+dBij(i,j)*alpha_ads_mix-&
                Bmix*dalpha_ads_mixij(i,j)-dBi(j)*dalpha_ads_mixi(i))/(Bmix-V*alpha_ads_mix)
                
-               g_modn2(i,j) = ((-2*dalpha_ads_mixi(j)*g_modn(i))/alpha_ads_mix)+(R/(alpha_ads_mix**2))*&
-               (dalpha_ads_mixij(i,j)*(log(V*alpha_ads_mix)-log(V*alpha_ads_mix-Bmix))-&
+               g_modn2(i,j) = ((-2._pr*dalpha_ads_mixi(j)*g_modn(i))/alpha_ads_mix)+(R/(alpha_ads_mix**2._pr))*&
+               ((1._pr/(TOTN**2._pr))*(alpha_ads_mix-(alpha_ads_mix**2._pr)+&
+               TOTN*dalpha_ads_mixi(j)*(2._pr*alpha_ads_mix - 1._pr))+&
+               dalpha_ads_mixij(i,j)*(log(V*alpha_ads_mix)-log(V*alpha_ads_mix-Bmix))-&
                dalpha_ads_mixi(i)*((Bmix-V*alpha_ads_mix)*g_modvn(j)/R-dalpha_ads_mixi(j)/alpha_ads_mix)-&
-               dalpha_ads_mixij(i,j)*log(V)+g_modn2_AUX(i,j)-(dBi(i)*alpha_ads_mix-Bmix*dalpha_ads_mixi(i))*g_modvn(j)/R)
+               dalpha_ads_mixij(i,j)*log(V/TOTN)+dalpha_ads_mixi(i)/TOTN+&
+               g_modn2_AUX(i,j)-(dBi(i)*alpha_ads_mix-Bmix*dalpha_ads_mixi(i))*g_modvn(j)/R)
                
                f_modn2_AUX_1(i,j) = dBij(i,j)/Bmix-dalpha_ads_mixij(i,j)/alpha_ads_mix+&
-               (dalpha_ads_mixi(i)*dalpha_ads_mixi(j))/((alpha_ads_mix**2))-(dBi(i)*dBi(j))/((Bmix**2))
+               (dalpha_ads_mixi(i)*dalpha_ads_mixi(j))/((alpha_ads_mix**2._pr))-(dBi(i)*dBi(j))/((Bmix**2._pr))
 
                f_modn2_AUX_2(i,j) = dBij(i,j)/Bmix+dalpha_ads_mixij(i,j)/alpha_ads_mix-&
-               (dalpha_ads_mixi(i)*dalpha_ads_mixi(j))/((alpha_ads_mix**2))-(dBi(i)*dBi(j))/((Bmix**2))
+               (dalpha_ads_mixi(i)*dalpha_ads_mixi(j))/((alpha_ads_mix**2._pr))-(dBi(i)*dBi(j))/((Bmix**2._pr))
                
                f_modn2(i,j) = -V*(f_modvn(j)*f_modvn_AUX_1(i)+f_modv*f_modn2_AUX_1(i,j))-&
                (f_modn(j)*f_modvn_AUX_2(i)+f_mod*f_modn2_AUX_2(i,j))

@@ -60,7 +60,7 @@ program test_deri
    print*, "X",X
    print*, "X",X(:n)
    print*, "X",X(n+1)
-   del=1.e-8_pr
+   del=1.e-3_pr
 
    call eos%residual_helmholtz(X(:n), X(n+1), X(n+2), Ar=asd)
    print*, asd

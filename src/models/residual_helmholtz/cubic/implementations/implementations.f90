@@ -70,12 +70,20 @@ contains
         else
             mixrule%l = reshape([(0, i=1,nc**2)], [nc, nc])
         endif
+      !   model%ac = 0.45723553_pr * R**2 * (composition%tc**2 / composition%pc)
+      !  model%alpha_ads_i = (1-(0.7597_pr*((rp/LJ_par)**-0.7708_pr)))/(1-(0.9793_pr*((rp/LJ_par)**-0.6366_pr)))
+      !  model%ac = 0.45723553_pr * R**2 * (composition%tc**2 / composition%pc) * &
+      !  (1-(0.7597_pr*((rp/LJ_par)**-0.7708_pr)))**2/(1-(0.9793_pr*((rp/LJ_par)**-0.6366_pr)))
+      !  model%b = 0.07779607_pr * R * composition%tc/(composition%pc * model%alpha_ads_i)
 
         model%components = composition
-        model%alpha_ads_i = (1-(0.7597_pr*((rp/LJ_par)**-0.7708_pr)))/(1-(0.9793_pr*((rp/LJ_par)**-0.6366_pr)))
-        model%ac = 0.45723553_pr * R**2 * (composition%tc**2 / composition%pc) * &
-        (1-(0.7597_pr*((rp/LJ_par)**-0.7708_pr)))**2/(1-(0.9793_pr*((rp/LJ_par)**-0.6366_pr)))
-        model%b = 0.07779607_pr * R * composition%tc/(composition%pc * model%alpha_ads_i)
+        model%alpha_ads_i = ((0.7597_pr*((rp/LJ_par)**-0.7708_pr))-1._pr)/((0.9793_pr*((rp/LJ_par)**(-0.6366_pr)))-1._pr)      
+       !! ac here is a - c, and is calculated with critical shift properties 
+        model%ac = 0.45723553_pr * R**2 * ((composition%tc*(1_pr-(0.7597_pr*((rp/LJ_par)**-0.7708_pr))))**2&
+        / (composition%pc*(1_pr-(0.9793_pr*((rp/LJ_par)**(-0.6366_pr)))))) 
+       !! b is also calculated with critical shift properties 
+        model%b = 0.07779607_pr * R * (composition%tc*(1_pr-(0.7597_pr*((rp/LJ_par)**-0.7708_pr))))/&
+        ((composition%pc*(1_pr-(0.9793_pr*((rp/LJ_par)**(-0.6366_pr))))) * model%alpha_ads_i)
         model%del1 = [(1 + sqrt(2.0_pr), i=1,nc)]
         model%del2 = [(1 - sqrt(2.0_pr), i=1,nc)]
         model%alpha = alpha
