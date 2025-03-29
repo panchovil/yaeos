@@ -11,10 +11,10 @@ program ejemplo_gera
     integer, parameter :: nc=3
     class(ArModel), allocatable :: model ! Thermodynamic model to be used
     type(EquilibriumState) :: sat_point   ! Init bulk
-    type(NanoEquilibriumState) :: init_point ! Init Nano
+    type(NanoEquilibriumState) :: init_point, init_point_1 ! Init Nano
 
     type(PTEnvel2) :: envelope           ! PT Phase envelope
-    type(NanoPTEnvel2) :: nano_envelope  ! PT Phase nano envelope
+    type(NanoPTEnvel2) :: nano_envelope, nano_envelope_1  ! PT Phase nano envelope
     real(pr) :: tc(nc), pc(nc), w(nc), z(nc), kij(nc,nc), lij(nc,nc) ! Component's values
     ! Capilar's values
     real(pr) :: r_poro, ang_cont
@@ -30,7 +30,7 @@ program ejemplo_gera
     
     !! ------------------------- BUBBLE ENVELOPE ------------------
     ! initialize the phase envelope
-    sat_point = saturation_pressure(model, z, P0=700._pr, kind="bubble", t=400._pr)
+    sat_point = saturation_pressure(model, z, P0=900._pr, kind="bubble", t=400._pr)
 
     ! Calculate 1 point of bulk envelope
     envelope = pt_envelope_2ph(model, z, sat_point, points=200)
@@ -69,7 +69,9 @@ program ejemplo_gera
     init_point%beta=sat_point%beta
 
     nano_envelope = nano_pt_envelope_2ph(model, z, r_poro, ang_cont,&
-                     Parachor, init_point, points=2000, iterations=1000)
+                     Parachor, init_point, points=1, iterations=1000)
+
+                 
     write(2,*) nano_envelope
     write(*,*) "-----------------Nano------------------------"
     write(*,*) "iteraciones Nano ",nano_envelope%points(1)%iters
@@ -81,7 +83,37 @@ program ejemplo_gera
     write(*,*) "Px final ", nano_envelope%points(1)%Px
     write(*,*) "Py final ", nano_envelope%points(1)%Py
 
-        
+
+    !! ------------Prueba curva bubble inicializando a partir de otra curva capilar con radio mas grande
+
+    ! init_point_1%kind=nano_envelope%points(1)%kind
+    ! init_point_1%iters=nano_envelope%points(1)%iters
+    ! init_point_1%y=nano_envelope%points(1)%y
+    ! init_point_1%x=nano_envelope%points(1)%x
+    ! init_point_1%Vy=nano_envelope%points(1)%Vy
+    ! init_point_1%Vx=nano_envelope%points(1)%Vx
+    ! init_point_1%T=nano_envelope%points(1)%T
+    ! init_point_1%Pcap=nano_envelope%points(1)%Pcap
+    ! init_point_1%Py=nano_envelope%points(1)%Py
+    ! init_point_1%Px=nano_envelope%points(1)%Px
+    ! init_point_1%beta=nano_envelope%points(1)%beta
+
+    init_point_1=nano_envelope%points(1)
+
+    nano_envelope_1 = nano_pt_envelope_2ph(model, z, 1E-8_pr, ang_cont,&
+                    Parachor, init_point_1, points=1, iterations=1000)
+
+
+    write(*,*) "-----------------Prueba------------------------"
+    write(*,*) "iteraciones Nano ",nano_envelope_1%points(1)%iters
+    write(*,*) "T final ", nano_envelope_1%points(1)%T
+    write(*,*) "Vx final ", nano_envelope_1%points(1)%Vx
+    write(*,*) "Vy final ", nano_envelope_1%points(1)%Vy
+    write(*,*) "K final ", (nano_envelope_1%points(1)%y/nano_envelope_1%points(1)%x)
+    write(*,*) "Pcap final ", nano_envelope_1%points(1)%Pcap
+    write(*,*) "Px final ", nano_envelope_1%points(1)%Px
+    write(*,*) "Py final ", nano_envelope_1%points(1)%Py
+
     !! -------------------------- DEW ENVELOPE ---------------------------
 
     sat_point = saturation_temperature(model, z, P=0.5_pr, kind="dew", t0=200._pr)
@@ -110,7 +142,7 @@ program ejemplo_gera
     init_point%Px=Px_init
     init_point%beta=sat_point%beta
     nano_envelope = nano_pt_envelope_2ph(model, z, r_poro, ang_cont,&
-                     Parachor, init_point, points=500)
+                     Parachor, init_point, points=1)
     write(4,*) nano_envelope
    
 
@@ -141,7 +173,7 @@ contains
 
         
         !Capillary pressure variables
-        r_poro_in=1E-7 !radio cualquiera de 100 nm
+        r_poro_in=1E-8 !radio cualquiera de 50 nm
         ang_cont_in=1.0472 !angulo cualquiera de 60º en radianes
         !ang_cont=ang_cont*3.14/180.0 !la variable esta en º y se necesita en radianes
 

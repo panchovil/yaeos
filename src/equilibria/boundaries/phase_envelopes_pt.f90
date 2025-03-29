@@ -439,7 +439,7 @@ contains
          write(unit, *) pt2%cps(cp)%T, pt2%cps(cp)%P
       end do
    end subroutine write_PTEnvel2
-   type(PTEnvel2) function find_hpl(model, z, T0, P0)
+   type(PTEnvel2) function find_hpl(model, z, T0, P0, points)
       !! # find_hpl
       !!
       !! ## Description
@@ -452,10 +452,15 @@ contains
       !! as it should be the first one appearing. If all components have a
       !! negative difference then the mixture is probably stable at all
       !! temperatures.
+      use stdlib_optval, only: optval
+
       class(ArModel), intent(in) :: model !! Equation of state model
       real(pr), intent(in) :: z(:) !! Mole fractions
       real(pr), intent(in) :: T0 !! Initial temperature [K]
       real(pr), intent(in) :: P0 !! Search pressure [bar]
+      integer, optional, intent(in) :: points
+      integer :: max_points !! Maximum number of points
+
 
       integer :: i
       real(pr) :: y(size(z))
@@ -463,6 +468,9 @@ contains
       type(EquilibriumState) :: fr
       real(pr) :: diffs(size(z)), Ts(size(z)), T, P
       integer :: ncomp, nc
+
+      max_points = optval(points, 500)
+
 
       nc = size(z)
       P = P0
@@ -505,7 +513,7 @@ contains
       fr%kind = "liquid-liquid"
       find_hpl = pt_envelope_2ph( &
          model, z, fr, &
-         specified_variable_0=nc+2, delta_0=-5.0_pr, iterations=1000)
+         specified_variable_0=nc+2, delta_0=-5.0_pr, iterations=1000, points=max_points)
    end function find_hpl
 
 end module yaeos__equilibria_boundaries_phase_envelopes_pt

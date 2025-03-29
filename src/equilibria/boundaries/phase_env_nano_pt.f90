@@ -148,8 +148,9 @@ contains
                 loc = maxloc(abs(numdiff - df))
                 print *, loc
                 print *, df(loc(1), loc(2)), numdiff(loc(1), loc(2))
+                print *, r_poro*1E9
                 
-                ! error stop 1
+                error stop 1
             end if
         end block test_numdiff
 
@@ -601,13 +602,13 @@ contains
    
             Xold = X
    
-            do while (maxval(abs(X(:nc))) < 0.05)
+            do while (maxval(abs(X(:nc))) < 0.02) ! estaba en 0.05 se puede twerkear
                ! If near a critical point, jump over it
                S = S + dS
                X = X + dXdS*dS
             end do
    
-            Xnew = X + dXdS*dS
+            Xnew = X + 3.5*dXdS*dS !se puede twerkear Xnew = X + n*dXdS*dS n mas grande mas grande la extrapolacion
    
             if (all(Xold(:nc) * (Xnew(:nc)) < 0)) then
                select case(kind)

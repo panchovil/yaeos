@@ -36,4 +36,8 @@ module yaeos__equilibria
 
    ! Extra
    use yaeos__equilibria_auxiliar, only: k_wilson, p_wilson
+
+   !Capillary Initializator
+   !use yaeos__equilibria_Laplace_Capillary_Initializer, only: capillary_init_point
+
 end module yaeos__equilibria

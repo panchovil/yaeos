@@ -1,5 +1,5 @@
 program test_paper_new
-   !! Program for calculation of phase diagrams. 
+   !! Program for calculation of phase diagrams.
    !use forsus, only: Substance, forsus_dir, forsus_default_dir
    use yaeos, only: pr, R, &
       SoaveRedlichKwong, PengRobinson76, PengRobinson78, RKPR, PengRobinson78Nano,&
@@ -12,14 +12,14 @@ program test_paper_new
    ! ===========================================================================
    ! Variables definition
    ! ---------------------------------------------------------------------------
-   integer, parameter :: nc=5  
+   integer, parameter :: nc=5
    integer :: i
    class(ArModel), allocatable :: model, model_nano ! Thermodynamic model to be used
    type(EquilibriumState) :: sat_point, sat_point_nano!, sat_point_auto_eos            ! Init
    type(NanoEquilibriumState) :: init_point_cap, init_point_nano_cap
-   type(PTEnvel2) :: envelope, envelope_nano!, envelope_auto_eos  
+   type(PTEnvel2) :: envelope, envelope_nano!, envelope_auto_eos
    type(NanoPTEnvel2) :: envelope_cap ,envelope_nano_cap
-   !class(PR78_nano_autodiff), allocatable :: auto_eos 
+   !class(PR78_nano_autodiff), allocatable :: auto_eos
 
                        ! PT Phase envelope
    real(pr) :: tc(nc), pc(nc), w(nc)                     ! Component's critical constants
@@ -29,12 +29,12 @@ program test_paper_new
 
    character(len=500) :: header, header_cap, names(nc)  ! Cadena para almacenar el encabezado
    character(len=1000) :: fmt, fmt_cap
-   
+
    ! ===========================================================================
    ! Compound definition
    ! ---------------------------------------------------------------------------
-   !! names="C1" "C2-C4" "C5-C7" "C8-C9" "C10+"   
-   !! composition vector                        
+   !! names="C1" "C2-C4" "C5-C7" "C8-C9" "C10+"
+   !! composition vector
    z = (/0.2506_pr, 0.22_pr, 0.20_pr, 0.13_pr, 0.1994_pr/)
 
    z = z/sum(z)
@@ -60,14 +60,14 @@ program test_paper_new
    0.0779_pr, 0.0384_pr, 0.0169_pr, 0.0111_pr, 0.0_pr  &  ! Fila 5
    ], shape=[nc, nc])
 
-   
+
    rp = 20.0_pr !nm
    ang_cont = 1.0472_pr !rad = 60º
    Parachor = (/77.0_pr, 145.2_pr, 250.0_pr, 306.0_pr, 686.3_pr/)
    !! correlacion con respecto a propiedades criticas
    LJ_par = 0.244_pr*((Tc/Pc)**(1.0/3.0)) !nm
 
-   !! changing tc and pc to tcc and pcc 
+   !! changing tc and pc to tcc and pcc
    delP = 0.9793_pr*((rp/LJ_par)**(-0.6366_pr))
    delT = 0.7597_pr*((rp/LJ_par)**(-0.7708_pr))
    Pcc = Pc - delP * Pc
@@ -125,7 +125,7 @@ program test_paper_new
    !envelope_auto_eos = pt_envelope_2ph(auto_eos, z, sat_point_auto_eos)
 
    !! --------------------------------------------------------------------------
-   
+
    ! write(1, "(A)") trim(header)
    ! do i=1,size(envelope%points)
    !    write(1,fmt) (((envelope%points(i)%T)-273.15_pr)*&
@@ -137,7 +137,7 @@ program test_paper_new
       write (1,*) envelope%points(i), envelope%points(i)%kind
    end do
    write(*,*)"bulk bubble cps:", envelope%cps
-   
+
    !! --------------------------------------------------------------------------
 
    ! write(1, "(A)") trim(header)
@@ -159,7 +159,7 @@ program test_paper_new
    ! write(*,*)"nano auto bubble cps:", envelope_auto_eos%cps
 
    !! --------------------------------------------------------------------------
-   
+
    ! write(3, "(A)") trim(header_cap)
    ! do i=1,size(envelope_cap%points)
    !    write(3,fmt_cap) (((envelope_cap%points(i)%T)-273.15_pr)*&
@@ -171,16 +171,16 @@ program test_paper_new
 
    !! --------------------------------------------------------------------------
 
-   ! write(3, "(A)") trim(header_cap)
-   ! do i=1,size(envelope_nano_cap%points)
-   !    write(3,fmt_cap) (((envelope_nano_cap%points(i)%T)-273.15_pr)*&
-   !    (9.0_pr/5.0_pr))+32.0_pr , 14.5038_pr*envelope_nano_cap%points(i)%Py, &
-   !    14.5038_pr*envelope_nano_cap%points(i)%Px, 14.5038_pr*envelope_nano_cap%points(i)%Pcap,&
-   !    log(envelope_nano_cap%points(i)%y/envelope_nano_cap%points(i)%x)
-   ! end do
-   ! write(*,*)"nano cap bubble cps:", envelope_nano_cap%cps
+   write(3, "(A)") trim(header_cap)
+   do i=1,size(envelope_nano_cap%points)
+      write(3,fmt_cap) (((envelope_nano_cap%points(i)%T)-273.15_pr)*&
+      (9.0_pr/5.0_pr))+32.0_pr , 14.5038_pr*envelope_nano_cap%points(i)%Py, &
+      14.5038_pr*envelope_nano_cap%points(i)%Px, 14.5038_pr*envelope_nano_cap%points(i)%Pcap,&
+      log(envelope_nano_cap%points(i)%y/envelope_nano_cap%points(i)%x)
+   end do
+   write(*,*)"nano cap bubble cps:", envelope_nano_cap%cps
 
-   write(3,*) envelope_nano_cap
+   ! write(3,*) envelope_nano_cap
 
 
    !! --------------------------------------------------------------------------
@@ -190,7 +190,7 @@ program test_paper_new
    sat_point = saturation_temperature(model, z, P=0.5_pr, kind="dew", t0=500._pr)
    sat_point_nano = saturation_temperature(model_nano, z, P=0.5_pr, kind="dew", t0=500._pr)
    !sat_point_auto_eos = saturation_temperature(auto_eos, z, P=0.5_pr, kind="dew", t0=500._pr)
-   
+
    ! Laplace's subroutine needs the pore radius in meters
    call Laplace_init(sat_point, Parachor, ang_cont, rp/1E9, init_point_cap)
    call Laplace_init(sat_point_nano, Parachor, ang_cont, rp/1E9, init_point_nano_cap)
@@ -204,13 +204,13 @@ program test_paper_new
    envelope_nano = pt_envelope_2ph(model_nano, z, sat_point_nano)
    ! pore radius in meters
    !envelope_cap = nano_pt_envelope_2ph(model, z, rp/1E9, ang_cont, Parachor, init_point_cap, 5000)
-   envelope_nano_cap = nano_pt_envelope_2ph(model_nano, z, rp/1E9, ang_cont, Parachor, init_point_nano_cap, 900)   
+   envelope_nano_cap = nano_pt_envelope_2ph(model_nano, z, rp/1E9, ang_cont, Parachor, init_point_nano_cap, 900)
    !envelope_auto_eos = pt_envelope_2ph(auto_eos, z, sat_point)
 
 
 
-   !! --------------------------------------------------------------------------   
-   
+   !! --------------------------------------------------------------------------
+
    ! write(2, "(A)") trim(header)
    ! do i=1,size(envelope%points)
    !    write(2,fmt) (((envelope%points(i)%T)-273.15_pr)*&
@@ -222,7 +222,7 @@ program test_paper_new
       write (2,*) envelope%points(i), envelope%points(i)%kind
    end do
    write(*,*)"bulk dew cps:", envelope%cps
-   
+
    !! --------------------------------------------------------------------------
 
    ! write(2, "(A)") trim(header)
@@ -244,7 +244,7 @@ program test_paper_new
    ! write(*,*)"nano auto dew cps:", envelope_auto_eos%cps
 
    !! --------------------------------------------------------------------------
-   
+
    ! write(4, "(A)") trim(header_cap)
    ! do i=1,size(envelope_cap%points)
    !    write(4,fmt_cap) (((envelope_cap%points(i)%T)-273.15_pr)*&
@@ -256,18 +256,18 @@ program test_paper_new
 
    !! --------------------------------------------------------------------------
 
-   ! write(4, "(A)") trim(header_cap)
-   ! do i=1,size(envelope_nano_cap%points)
-   !    write(4,fmt_cap) (((envelope_nano_cap%points(i)%T)-273.15_pr)*&
-   !    (9.0_pr/5.0_pr))+32.0_pr , 14.5038_pr*envelope_nano_cap%points(i)%Py, &
-   !    14.5038_pr*envelope_nano_cap%points(i)%Px, 14.5038_pr*envelope_nano_cap%points(i)%Pcap,&
-   !    log(envelope_nano_cap%points(i)%y/envelope_nano_cap%points(i)%x)
-   ! end do
+   write(4, "(A)") trim(header_cap)
+   do i=1,size(envelope_nano_cap%points)
+      write(4,fmt_cap) (((envelope_nano_cap%points(i)%T)-273.15_pr)*&
+      (9.0_pr/5.0_pr))+32.0_pr , 14.5038_pr*envelope_nano_cap%points(i)%Py, &
+      14.5038_pr*envelope_nano_cap%points(i)%Px, 14.5038_pr*envelope_nano_cap%points(i)%Pcap,&
+      log(envelope_nano_cap%points(i)%y/envelope_nano_cap%points(i)%x)
+   end do
    write(*,*)"nano cap dew cps:", envelope_nano_cap%cps
-   write(4,*) envelope_nano_cap
+   ! write(4,*) envelope_nano_cap
    !! --------------------------------------------------------------------------
    write(*,*) "          ","C1","                       ", "C2-C4","                     ",&
-    "C5-C7","                     ","C8-C9","                     ","C10+"   
+    "C5-C7","                     ","C8-C9","                     ","C10+"
    write(*,*) LJ_par
 
    contains

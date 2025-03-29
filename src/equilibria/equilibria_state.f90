@@ -81,7 +81,12 @@ contains
       !write(unit,*)  eq%T, eq%P
       write(cadenaT,"(F16.8)")  eq%T
       write(cadenaP,"(F16.8)")  eq%P
-      write(unit,*) cadenaT, ",", cadenaP, ",", "  iters", eq%iters, " ns :", eq%ns, log(eq%y/eq%x)
+      if (eq%kind == "bubble") then
+         write(unit,*) cadenaT, ",", cadenaP, ",", "  iters", eq%iters, " ns :", eq%ns, log(eq%y/eq%x)
+      else
+         write(unit,*) cadenaT, ",", cadenaP, ",", "  iters", eq%iters, " ns :", eq%ns, log(eq%x/eq%y)
+      end if
+      
 
    end subroutine write_EquilibriumState
    subroutine write_NanoEquilibriumState(eq, unit, iotype, v_list, iostat, iomsg) 
@@ -101,7 +106,13 @@ contains
       write(cadenaPy,"(F16.8)")  eq%Py
       write(cadenaPx,"(F16.8)")  eq%Px
       write(cadenaPcap,"(F16.8)")  eq%Pcap
-      write(unit,*) cadenaT, ",", cadenaPy, ",", cadenaPx, ",", cadenaPcap, ",", "  iters", eq%iters, " ns :", eq%ns, log(eq%y/eq%x)
+      if (eq%kind == "bubble") then
+         write(unit,*) cadenaT, ",", cadenaPy, ",", cadenaPx, ",", cadenaPcap, ",", "  iters",&
+          eq%iters, " ns :", eq%ns, log(eq%y/eq%x)
+      else
+         write(unit,*) cadenaT, ",", cadenaPy, ",", cadenaPx, ",", cadenaPcap, ",", "  iters",&
+          eq%iters, " ns :", eq%ns, log(eq%x/eq%y)
+      end if
 
    end subroutine write_NanoEquilibriumState
 end module yaeos__equilibria_equilibrium_state
